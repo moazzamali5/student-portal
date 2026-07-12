@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// Same rationale as firestore.rules: this app only ever reads/writes Storage
+// through the Admin SDK (server-side), so direct client access to its
+// prefix is denied outright.
+//
+// IMPORTANT: merge this `match` block into whatever rules already exist for
+// this shared project (hicaa-staffinfo) — do not replace the whole file.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /studentPortal/{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

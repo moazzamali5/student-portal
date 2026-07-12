@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// This app (student portal) only ever talks to Firestore through the Admin
+// SDK on the server, which bypasses these rules entirely — so every
+// studentPortal_* collection here is locked to "no direct client access".
+// This is deliberate: it means a leaked client config (which is meant to be
+// public for Firebase web apps) can't be used to read or write this app's
+// data directly from a browser or script.
+//
+// IMPORTANT: merge this `match` block into whatever rules already exist for
+// this shared project (hicaa-staffinfo) — do not replace the whole file,
+// since other apps' rules for their own collections need to stay intact.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /studentPortal_users/{docId} { allow read, write: if false; }
+    match /studentPortal_classSessions/{docId} { allow read, write: if false; }
+    match /studentPortal_homework/{docId} { allow read, write: if false; }
+    match /studentPortal_homeworkSubmissions/{docId} { allow read, write: if false; }
+    match /studentPortal_articles/{docId} { allow read, write: if false; }
+    match /studentPortal_articleReads/{docId} { allow read, write: if false; }
+    match /studentPortal_emailLog/{docId} { allow read, write: if false; }
+  }
+}

@@ -1,0 +1,13 @@
+diff --git a/node_modules/@netlify/plugin-nextjs/dist/build/content/server.js b/node_modules/@netlify/plugin-nextjs/dist/build/content/server.js
+index c8a099b..f51ff52 100644
+--- a/node_modules/@netlify/plugin-nextjs/dist/build/content/server.js
++++ b/node_modules/@netlify/plugin-nextjs/dist/build/content/server.js
+@@ -125,7 +125,7 @@ var copyNextServerCode = async (ctx) => {
+       const dest = join(destDir, "node_modules");
+       await cp(src, dest, {
+         recursive: true,
+-        verbatimSymlinks: true,
++        dereference: true,
+         force: true,
+         filter
+       });

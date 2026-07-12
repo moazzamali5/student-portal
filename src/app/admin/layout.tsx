@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { NavBar } from "@/components/nav-bar";
+import { getServerUser } from "@/lib/session";
 
 const links = [
   { href: "/admin", label: "Home" },
@@ -8,7 +10,11 @@ const links = [
   { href: "/admin/students", label: "Students" },
 ];
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const user = await getServerUser();
+  if (!user) redirect("/login");
+  if (user.role !== "ADMIN") redirect("/dashboard");
+
   return (
     <div className="flex min-h-screen flex-1 flex-col">
       <NavBar title="Admin — Student Portal" links={links} />

@@ -46,3 +46,7 @@ serviceAccountKey.json
 
 # Netlify
 /.netlify
+deno.lock
+
+# Claude Code local state
+/.claude

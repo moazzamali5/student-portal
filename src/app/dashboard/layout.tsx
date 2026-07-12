@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { NavBar } from "@/components/nav-bar";
+import { getServerUser } from "@/lib/session";
 
 const links = [
   { href: "/dashboard", label: "Home" },
@@ -8,7 +10,11 @@ const links = [
   { href: "/dashboard/profile", label: "Profile" },
 ];
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const user = await getServerUser();
+  if (!user) redirect("/login");
+  if (user.role === "ADMIN") redirect("/admin");
+
   return (
     <div className="flex min-h-screen flex-1 flex-col">
       <NavBar title="Student Portal" links={links} />

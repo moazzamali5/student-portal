@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { COLLECTIONS } from "@/lib/collections";
-import { requireUser } from "@/lib/api-auth";
+import { requireApprovedParent, requireUser } from "@/lib/api-auth";
 import { readUploadedFile } from "@/lib/uploads";
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -25,7 +25,12 @@ export async function GET(
 
   const isOwner = submission.studentId === session.user.id;
   const isAdmin = session.user.role === "ADMIN";
-  if (!isOwner && !isAdmin) {
+  let isParentOfOwner = false;
+  if (!isOwner && !isAdmin && session.user.role === "PARENT") {
+    const parentCheck = await requireApprovedParent();
+    isParentOfOwner = !parentCheck.error && parentCheck.linkedStudentIds.includes(submission.studentId);
+  }
+  if (!isOwner && !isAdmin && !isParentOfOwner) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

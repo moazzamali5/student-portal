@@ -23,10 +23,12 @@ export function NavBar({
   }
 
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur-sm">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex flex-wrap items-center gap-6">
-          <span className="text-base font-semibold text-slate-900">{title}</span>
+          <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-base font-semibold text-transparent">
+            {title}
+          </span>
           <nav className="flex flex-wrap gap-1">
             {links.map((link) => {
               const active = pathname === link.href;
@@ -46,7 +48,7 @@ export function NavBar({
         </div>
         <button
           onClick={handleLogout}
-          className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+          className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
         >
           Log out
         </button>

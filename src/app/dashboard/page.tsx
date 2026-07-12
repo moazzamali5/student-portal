@@ -2,7 +2,8 @@ import Link from "next/link";
 import { getServerUser } from "@/lib/session";
 import { adminDb } from "@/lib/firebase-admin";
 import { COLLECTIONS } from "@/lib/collections";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Card, ProgressBar } from "@/components/ui";
+import { ClockIcon } from "@/components/icons";
 import type { ClassSessionDoc, HomeworkDoc, HomeworkSubmissionDoc, ArticleDoc, ArticleReadDoc, WithId } from "@/lib/types";
 
 export default async function DashboardHome() {
@@ -13,15 +14,32 @@ export default async function DashboardHome() {
   const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const db = adminDb();
-  const [profileDoc, classSnap, homeworkSnap, submissionsSnap, articleSnap, readsSnap] = await Promise.all([
+  const [
+    profileDoc,
+    classSnap,
+    homeworkSnap,
+    submissionsSnap,
+    articleSnap,
+    readsSnap,
+    homeworkCountSnap,
+    articleCountSnap,
+  ] = await Promise.all([
     db.collection(COLLECTIONS.users).doc(studentId).get(),
     db.collection(COLLECTIONS.classSessions).where("dayOfWeek", "==", dayOfWeek).get(),
     db.collection(COLLECTIONS.homework).where("dueDate", "<=", weekFromNow).orderBy("dueDate", "asc").limit(5).get(),
     db.collection(COLLECTIONS.homeworkSubmissions).where("studentId", "==", studentId).get(),
     db.collection(COLLECTIONS.articles).orderBy("createdAt", "desc").limit(5).get(),
     db.collection(COLLECTIONS.articleReads).where("studentId", "==", studentId).get(),
+    db.collection(COLLECTIONS.homework).count().get(),
+    db.collection(COLLECTIONS.articles).count().get(),
   ]);
   const firstName = (profileDoc.data()?.name as string | undefined)?.split(" ")[0] ?? "there";
+
+  const totalHomework = homeworkCountSnap.data().count;
+  const totalArticles = articleCountSnap.data().count;
+  const homeworkCompletionPct = totalHomework ? Math.round((submissionsSnap.size / totalHomework) * 100) : 0;
+  const articlesCompletedCount = readsSnap.docs.filter((d) => d.data().closedAt).length;
+  const articlesCompletionPct = totalArticles ? Math.round((articlesCompletedCount / totalArticles) * 100) : 0;
 
   const todaysClasses = classSnap.docs
     .map((d) => ({ id: d.id, ...d.data() }) as WithId<ClassSessionDoc>)
@@ -56,6 +74,35 @@ export default async function DashboardHome() {
       <h1 className="text-xl font-semibold text-slate-900">
         Welcome back, {firstName}
       </h1>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-medium text-slate-700">Homework completion</p>
+            <span className="text-sm font-semibold text-slate-900">{homeworkCompletionPct}%</span>
+          </div>
+          <ProgressBar value={homeworkCompletionPct} tone="indigo" />
+        </Card>
+        <Card>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-medium text-slate-700">Articles read</p>
+            <span className="text-sm font-semibold text-slate-900">{articlesCompletionPct}%</span>
+          </div>
+          <ProgressBar value={articlesCompletionPct} tone="emerald" />
+        </Card>
+      </div>
+
+      <Link href="/dashboard/planner" className="block">
+        <Card hover className="flex items-center gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+            <ClockIcon />
+          </div>
+          <div>
+            <p className="font-medium text-slate-900">Plan your time</p>
+            <p className="text-sm text-slate-500">Add your free time and to-dos — we&apos;ll build you a schedule.</p>
+          </div>
+        </Card>
+      </Link>
 
       <Card>
         <div className="mb-3 flex items-center justify-between">

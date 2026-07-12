@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     maxAge: SESSION_MAX_AGE_MS / 1000,
   });
 
-  const role = decoded.role === "ADMIN" ? "ADMIN" : "STUDENT";
+  const role = decoded.role === "ADMIN" ? "ADMIN" : decoded.role === "PARENT" ? "PARENT" : "STUDENT";
   return NextResponse.json({ role });
 }
 

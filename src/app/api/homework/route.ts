@@ -2,12 +2,25 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
 import { COLLECTIONS } from "@/lib/collections";
-import { requireAdmin, requireUser } from "@/lib/api-auth";
+import { requireAdmin, requireApprovedParent, requireUser } from "@/lib/api-auth";
 import type { HomeworkSubmissionDoc, WithId } from "@/lib/types";
 
-export async function GET() {
+export async function GET(request: Request) {
   const { session, error } = await requireUser();
   if (error) return error;
+
+  let scopedStudentId: string | null = null;
+  if (session.user.role === "STUDENT") {
+    scopedStudentId = session.user.id;
+  } else if (session.user.role === "PARENT") {
+    const parentCheck = await requireApprovedParent();
+    if (parentCheck.error) return parentCheck.error;
+    const childId = new URL(request.url).searchParams.get("child");
+    if (!childId || !parentCheck.linkedStudentIds.includes(childId)) {
+      return NextResponse.json({ error: "Specify a valid child." }, { status: 400 });
+    }
+    scopedStudentId = childId;
+  }
 
   const [homeworkSnap, submissionsSnap] = await Promise.all([
     adminDb().collection(COLLECTIONS.homework).orderBy("dueDate", "asc").get(),
@@ -24,8 +37,7 @@ export async function GET() {
 
   const homework = homeworkSnap.docs.map((doc) => {
     const all = submissionsByHomeworkId.get(doc.id) ?? [];
-    const submissions =
-      session.user.role === "STUDENT" ? all.filter((s) => s.studentId === session.user.id) : all;
+    const submissions = scopedStudentId ? all.filter((s) => s.studentId === scopedStudentId) : all;
     return {
       id: doc.id,
       ...doc.data(),

@@ -11,6 +11,9 @@ export const COLLECTIONS = {
   articles: `${PREFIX}_articles`,
   articleReads: `${PREFIX}_articleReads`,
   emailLog: `${PREFIX}_emailLog`,
+  availability: `${PREFIX}_availability`,
+  tasks: `${PREFIX}_tasks`,
+  scheduledTasks: `${PREFIX}_scheduledTasks`,
 } as const;
 
 export const STORAGE_PREFIX = PREFIX;

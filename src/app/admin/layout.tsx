@@ -8,11 +8,13 @@ const links = [
   { href: "/admin/homework", label: "Homework" },
   { href: "/admin/articles", label: "Articles" },
   { href: "/admin/students", label: "Students" },
+  { href: "/admin/parents", label: "Parents" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getServerUser();
   if (!user) redirect("/login");
+  if (user.role === "PARENT") redirect("/parent");
   if (user.role !== "ADMIN") redirect("/dashboard");
 
   return (

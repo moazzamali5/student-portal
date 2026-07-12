@@ -2,12 +2,25 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
 import { COLLECTIONS } from "@/lib/collections";
-import { requireAdmin, requireUser } from "@/lib/api-auth";
+import { requireAdmin, requireApprovedParent, requireUser } from "@/lib/api-auth";
 import type { ArticleReadDoc, WithId } from "@/lib/types";
 
-export async function GET() {
+export async function GET(request: Request) {
   const { session, error } = await requireUser();
   if (error) return error;
+
+  let scopedStudentId: string | null = null;
+  if (session.user.role === "STUDENT") {
+    scopedStudentId = session.user.id;
+  } else if (session.user.role === "PARENT") {
+    const parentCheck = await requireApprovedParent();
+    if (parentCheck.error) return parentCheck.error;
+    const childId = new URL(request.url).searchParams.get("child");
+    if (!childId || !parentCheck.linkedStudentIds.includes(childId)) {
+      return NextResponse.json({ error: "Specify a valid child." }, { status: 400 });
+    }
+    scopedStudentId = childId;
+  }
 
   const [articlesSnap, readsSnap] = await Promise.all([
     adminDb().collection(COLLECTIONS.articles).orderBy("createdAt", "desc").get(),
@@ -24,7 +37,7 @@ export async function GET() {
 
   const articles = articlesSnap.docs.map((doc) => {
     const all = readsByArticleId.get(doc.id) ?? [];
-    const reads = session.user.role === "STUDENT" ? all.filter((r) => r.studentId === session.user.id) : all;
+    const reads = scopedStudentId ? all.filter((r) => r.studentId === scopedStudentId) : all;
     return { id: doc.id, ...doc.data(), reads };
   });
 

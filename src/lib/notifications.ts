@@ -2,7 +2,9 @@ import { adminDb } from "@/lib/firebase-admin";
 import { COLLECTIONS } from "@/lib/collections";
 import { sendMail } from "@/lib/mailer";
 import { DAYS } from "@/lib/constants";
-import type { ClassSessionDoc, HomeworkDoc, WithId } from "@/lib/types";
+import type { ClassSessionDoc, HomeworkDoc, ScheduledTaskDoc, WithId } from "@/lib/types";
+
+type EmailType = "CLASS_REMINDER" | "WEEKLY_SUMMARY" | "TASK_REMINDER";
 
 function todayDateKey(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -17,12 +19,12 @@ function isoWeekKey(d: Date) {
   return `${date.getUTCFullYear()}-W${weekNo}`;
 }
 
-async function alreadySent(type: "CLASS_REMINDER" | "WEEKLY_SUMMARY", userId: string, referenceKey: string) {
+async function alreadySent(type: EmailType, userId: string, referenceKey: string) {
   const doc = await adminDb().collection(COLLECTIONS.emailLog).doc(`${type}_${userId}_${referenceKey}`).get();
   return doc.exists;
 }
 
-async function markSent(type: "CLASS_REMINDER" | "WEEKLY_SUMMARY", userId: string, referenceKey: string) {
+async function markSent(type: EmailType, userId: string, referenceKey: string) {
   await adminDb()
     .collection(COLLECTIONS.emailLog)
     .doc(`${type}_${userId}_${referenceKey}`)
@@ -124,5 +126,52 @@ export async function sendWeeklyDigest() {
     );
 
     await markSent("WEEKLY_SUMMARY", doc.id, weekKey);
+  }
+}
+
+// Intended to run every 5 minutes alongside sendClassReminders; catches
+// accepted planner tasks starting 25-35 minutes from now.
+export async function sendTaskReminders() {
+  const db = adminDb();
+  const now = new Date();
+  const dateKey = todayDateKey(now);
+  const windowStart = new Date(now.getTime() + 25 * 60 * 1000);
+  const windowEnd = new Date(now.getTime() + 35 * 60 * 1000);
+
+  const scheduledSnap = await db.collection(COLLECTIONS.scheduledTasks).where("date", "==", dateKey).get();
+  const dueScheduled = scheduledSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() }) as WithId<ScheduledTaskDoc>)
+    .filter((s) => {
+      if (s.status !== "accepted") return false;
+      const [h, m] = s.startTime.split(":").map(Number);
+      const taskTime = new Date(now);
+      taskTime.setHours(h, m, 0, 0);
+      return taskTime >= windowStart && taskTime <= windowEnd;
+    });
+
+  if (dueScheduled.length === 0) return;
+
+  const studentIds = [...new Set(dueScheduled.map((s) => s.studentId))];
+  const taskIds = [...new Set(dueScheduled.map((s) => s.taskId))];
+  const [studentDocs, taskDocs] = await Promise.all([
+    Promise.all(studentIds.map((id) => db.collection(COLLECTIONS.users).doc(id).get())),
+    Promise.all(taskIds.map((id) => db.collection(COLLECTIONS.tasks).doc(id).get())),
+  ]);
+  const studentById = new Map(studentDocs.filter((d) => d.exists).map((d) => [d.id, d.data()!]));
+  const taskTitleById = new Map(taskDocs.filter((d) => d.exists).map((d) => [d.id, d.data()!.title as string]));
+
+  for (const s of dueScheduled) {
+    const student = studentById.get(s.studentId);
+    if (!student) continue;
+    const title = taskTitleById.get(s.taskId) ?? "Your task";
+    if (await alreadySent("TASK_REMINDER", s.studentId, s.id)) continue;
+
+    await sendMail(
+      student.email,
+      `Reminder: ${title} starts in 30 minutes`,
+      `<p>Hi ${student.name},</p><p><strong>${title}</strong> is scheduled from ${s.startTime} to ${s.endTime} today.</p>`,
+    );
+
+    await markSent("TASK_REMINDER", s.studentId, s.id);
   }
 }

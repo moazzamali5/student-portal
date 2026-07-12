@@ -9,16 +9,21 @@ export async function GET() {
   if (error) return error;
 
   const doc = await adminDb().collection(COLLECTIONS.users).doc(session.user.id).get();
-  const user = doc.data();
+  if (!doc.exists) {
+    return NextResponse.json({ error: "No profile yet." }, { status: 404 });
+  }
+  const user = doc.data()!;
 
   return NextResponse.json({
     id: doc.id,
-    name: user?.name,
-    email: user?.email,
-    role: user?.role,
-    rollNumber: user?.rollNumber ?? null,
-    className: user?.className ?? null,
-    createdAt: user?.createdAt,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    rollNumber: user.rollNumber ?? null,
+    className: user.className ?? null,
+    createdAt: user.createdAt,
+    linkedStudentIds: user.linkedStudentIds ?? null,
+    approvalStatus: user.approvalStatus ?? null,
   });
 }
 

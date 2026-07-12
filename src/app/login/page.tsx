@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { clientAuth } from "@/lib/firebase-client";
+import { clientAuth, googleProvider } from "@/lib/firebase-client";
 import { friendlyFirebaseError } from "@/lib/firebase-errors";
-import { Button, Card, ErrorText, Input, Label } from "@/components/ui";
+import { establishSessionAndRoute } from "@/lib/auth-flow";
+import { Button, Card, Divider, ErrorText, GoogleButton, Input, Label } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -23,17 +25,7 @@ export default function LoginPage() {
     try {
       const credential = await signInWithEmailAndPassword(clientAuth, email, password);
       const idToken = await credential.user.getIdToken();
-
-      const res = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
-      if (!res.ok) throw new Error("Could not sign you in. Please try again.");
-      const { role } = await res.json();
-
-      router.push(role === "ADMIN" ? "/admin" : "/dashboard");
-      router.refresh();
+      await establishSessionAndRoute(idToken, router);
     } catch (err) {
       setError(friendlyFirebaseError(err, "Invalid email or password."));
     } finally {
@@ -41,11 +33,35 @@ export default function LoginPage() {
     }
   }
 
+  async function handleGoogle() {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      const credential = await signInWithPopup(clientAuth, googleProvider);
+      const idToken = await credential.user.getIdToken();
+      await establishSessionAndRoute(idToken, router);
+    } catch (err) {
+      setError(friendlyFirebaseError(err, "Could not sign in with Google."));
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
+
   return (
-    <main className="flex flex-1 items-center justify-center px-4">
+    <main className="flex flex-1 items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-slate-50 px-4">
       <Card className="w-full max-w-sm">
         <h1 className="text-xl font-semibold text-slate-900">Log in</h1>
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+
+        <GoogleButton
+          className="mt-4"
+          disabled={googleLoading}
+          onClick={handleGoogle}
+          label={googleLoading ? "Signing in..." : "Continue with Google"}
+        />
+
+        <Divider label="or" className="my-4" />
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
             <Input

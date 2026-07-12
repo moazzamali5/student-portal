@@ -8,6 +8,8 @@ const registerSchema = z.object({
   name: z.string().min(1).max(100),
   rollNumber: z.string().max(50).optional(),
   className: z.string().max(50).optional(),
+  requestedRole: z.enum(["STUDENT", "PARENT"]).optional(),
+  linkedStudentIds: z.array(z.string()).max(20).optional(),
 });
 
 export async function POST(request: Request) {
@@ -29,8 +31,13 @@ export async function POST(request: Request) {
   }
 
   const superAdminEmail = process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
-  const role = email.toLowerCase() === superAdminEmail ? "ADMIN" : "STUDENT";
+  const isSuperAdmin = email.toLowerCase() === superAdminEmail;
+  const role = isSuperAdmin ? "ADMIN" : (parsed.data.requestedRole ?? "STUDENT");
   const { name, rollNumber, className } = parsed.data;
+
+  if (role === "PARENT" && (!parsed.data.linkedStudentIds || parsed.data.linkedStudentIds.length === 0)) {
+    return NextResponse.json({ error: "Select at least one student to link to." }, { status: 400 });
+  }
 
   await adminAuth().setCustomUserClaims(uid, { role });
 
@@ -44,6 +51,9 @@ export async function POST(request: Request) {
       rollNumber: rollNumber ?? null,
       className: className ?? null,
       createdAt: new Date().toISOString(),
+      ...(role === "PARENT"
+        ? { linkedStudentIds: parsed.data.linkedStudentIds, approvalStatus: "PENDING" }
+        : {}),
     });
 
   return NextResponse.json({ id: uid, email, role }, { status: 201 });

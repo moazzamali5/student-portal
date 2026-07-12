@@ -40,11 +40,47 @@ export type ArticleReadDoc = {
   summary: string | null;
 };
 
+export type Role = "STUDENT" | "ADMIN" | "PARENT";
+export type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
+
 export type UserDoc = {
   name: string;
   email: string;
-  role: "STUDENT" | "ADMIN";
+  role: Role;
   rollNumber: string | null;
   className: string | null;
   createdAt: string;
+  // PARENT-only fields
+  linkedStudentIds?: string[];
+  approvalStatus?: ApprovalStatus;
+};
+
+export type AvailabilityDoc = {
+  studentId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+};
+
+export type TaskStatus = "unscheduled" | "scheduled" | "done";
+
+export type TaskDoc = {
+  studentId: string;
+  title: string;
+  durationMinutes: number;
+  deadline: string | null;
+  notes: string | null;
+  status: TaskStatus;
+  createdAt: string;
+};
+
+export type ScheduledTaskStatus = "proposed" | "accepted";
+
+export type ScheduledTaskDoc = {
+  taskId: string;
+  studentId: string;
+  date: string; // ISO date, e.g. "2026-07-14"
+  startTime: string;
+  endTime: string;
+  status: ScheduledTaskStatus;
 };

@@ -5,6 +5,7 @@ import { getServerUser } from "@/lib/session";
 const links = [
   { href: "/admin", label: "Home" },
   { href: "/admin/timetable", label: "Timetable" },
+  { href: "/admin/reschedule-requests", label: "Reschedule" },
   { href: "/admin/homework", label: "Homework" },
   { href: "/admin/articles", label: "Articles" },
   { href: "/admin/students", label: "Students" },

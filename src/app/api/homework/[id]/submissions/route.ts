@@ -20,6 +20,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!homeworkDoc.exists) {
     return NextResponse.json({ error: "Homework not found" }, { status: 404 });
   }
+  const assignedStudentIds = new Set<string>((homeworkDoc.data()?.assignedStudentIds as string[] | undefined) ?? []);
 
   const submissionByStudentId = new Map<string, WithId<HomeworkSubmissionDoc>>();
   submissionsSnap.docs.forEach((doc) => {
@@ -28,6 +29,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   });
 
   const rows = studentsSnap.docs
+    .filter((doc) => assignedStudentIds.has(doc.id))
     .map((doc) => {
       const student = doc.data();
       return {

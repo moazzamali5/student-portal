@@ -32,34 +32,10 @@ async function main() {
   );
   console.log(`Admin ready: ${adminEmail}`);
 
-  const classCount = (await db.collection(COLLECTIONS.classSessions).count().get()).data().count;
-  if (classCount === 0) {
-    const batch = db.batch();
-    const sample = [
-      { dayOfWeek: 1, subject: "Mathematics", teacher: "Mr. Khan", room: "101", startTime: "09:00", endTime: "09:45" },
-      { dayOfWeek: 1, subject: "English", teacher: "Ms. Ali", room: "102", startTime: "10:00", endTime: "10:45" },
-      { dayOfWeek: 2, subject: "Physics", teacher: "Mr. Ahmed", room: "Lab 1", startTime: "09:00", endTime: "09:45" },
-      { dayOfWeek: 3, subject: "Chemistry", teacher: "Ms. Fatima", room: "Lab 2", startTime: "11:00", endTime: "11:45" },
-      { dayOfWeek: 4, subject: "Computer Science", teacher: "Mr. Raza", room: "103", startTime: "09:00", endTime: "09:45" },
-    ];
-    for (const s of sample) {
-      batch.set(db.collection(COLLECTIONS.classSessions).doc(), { ...s, createdAt: new Date().toISOString() });
-    }
-    await batch.commit();
-    console.log("Sample timetable created.");
-  }
-
-  const homeworkCount = (await db.collection(COLLECTIONS.homework).count().get()).data().count;
-  if (homeworkCount === 0) {
-    await db.collection(COLLECTIONS.homework).add({
-      title: "Algebra worksheet",
-      description: "Complete exercises 1-10 from chapter 3.",
-      subject: "Mathematics",
-      dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-      createdAt: new Date().toISOString(),
-    });
-    console.log("Sample homework created.");
-  }
+  // Timetable and homework are per-student now (private 1:1 tutoring), so
+  // there's no meaningful "sample" to seed without a real student to attach
+  // it to — the admin enters those from /admin/timetable and /admin/homework
+  // once students have signed up.
 
   const articleCount = (await db.collection(COLLECTIONS.articles).count().get()).data().count;
   if (articleCount === 0) {

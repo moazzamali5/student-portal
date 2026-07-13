@@ -17,7 +17,7 @@ export async function POST() {
 
   const [availabilitySnap, classSnap, tasksSnap, scheduledSnap] = await Promise.all([
     db.collection(COLLECTIONS.availability).where("studentId", "==", studentId).get(),
-    db.collection(COLLECTIONS.classSessions).get(),
+    db.collection(COLLECTIONS.classSessions).where("studentId", "==", studentId).get(),
     db.collection(COLLECTIONS.tasks).where("studentId", "==", studentId).get(),
     db.collection(COLLECTIONS.scheduledTasks).where("studentId", "==", studentId).get(),
   ]);

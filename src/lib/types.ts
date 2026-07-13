@@ -1,20 +1,42 @@
 export type WithId<T> = T & { id: string };
 
+export type ClassSessionStatus = "scheduled" | "taken";
+
+// Per-student and date-specific (private 1:1 tutoring — each student has
+// their own timetable, re-entered week to week, not a shared recurring one).
 export type ClassSessionDoc = {
-  dayOfWeek: number;
-  subject: string;
-  teacher?: string | null;
-  room?: string | null;
+  studentId: string;
+  date: string; // ISO date, e.g. "2026-07-14"
   startTime: string;
   endTime: string;
+  classLink: string | null;
+  status: ClassSessionStatus;
   createdAt: string;
 };
 
 export type HomeworkDoc = {
   title: string;
   description: string | null;
-  subject: string;
+  subject?: string | null;
   dueDate: string;
+  assignedStudentIds: string[];
+  instructionsFileUrl: string | null;
+  instructionsFileType: string | null;
+  createdAt: string;
+};
+
+export type RescheduleRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export type RescheduleRequestDoc = {
+  studentId: string;
+  classSessionId: string;
+  originalDate: string;
+  originalStartTime: string;
+  originalEndTime: string;
+  newDate: string;
+  newStartTime: string;
+  newEndTime: string;
+  status: RescheduleRequestStatus;
   createdAt: string;
 };
 

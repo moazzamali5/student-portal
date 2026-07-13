@@ -9,8 +9,9 @@ type Homework = {
   id: string;
   title: string;
   description: string | null;
-  subject: string;
+  subject: string | null;
   dueDate: string;
+  instructionsFileUrl: string | null;
   submissions: { id: string; fileType: string; submittedAt: string }[];
 };
 
@@ -47,10 +48,19 @@ function HomeworkList() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-medium text-slate-900">
-                      {hw.title} <span className="text-sm font-normal text-slate-500">({hw.subject})</span>
+                      {hw.title} {hw.subject && <span className="text-sm font-normal text-slate-500">({hw.subject})</span>}
                     </p>
                     {hw.description && <p className="mt-1 text-sm text-slate-600">{hw.description}</p>}
                     <p className="mt-1 text-sm text-slate-500">Due {new Date(hw.dueDate).toLocaleDateString()}</p>
+                    {hw.instructionsFileUrl && (
+                      <a
+                        href={`/api/homework/${hw.id}/instructions/download`}
+                        target="_blank"
+                        className="mt-1 inline-block text-sm text-indigo-600 hover:underline"
+                      >
+                        View instructions (PDF)
+                      </a>
+                    )}
                     {submission && (
                       <a
                         href={`/api/homework/submissions/${submission.id}/download`}

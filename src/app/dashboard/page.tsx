@@ -4,13 +4,14 @@ import { adminDb } from "@/lib/firebase-admin";
 import { COLLECTIONS } from "@/lib/collections";
 import { Badge, Card, ProgressBar } from "@/components/ui";
 import { ClockIcon } from "@/components/icons";
+import { toLocalDateKey } from "@/lib/date-utils";
 import type { ClassSessionDoc, HomeworkDoc, HomeworkSubmissionDoc, ArticleDoc, ArticleReadDoc, WithId } from "@/lib/types";
 
 export default async function DashboardHome() {
   const user = await getServerUser();
   const studentId = user!.id;
   const now = new Date();
-  const dayOfWeek = now.getDay();
+  const todayKey = toLocalDateKey(now);
   const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const db = adminDb();
@@ -25,8 +26,8 @@ export default async function DashboardHome() {
     articleCountSnap,
   ] = await Promise.all([
     db.collection(COLLECTIONS.users).doc(studentId).get(),
-    db.collection(COLLECTIONS.classSessions).where("dayOfWeek", "==", dayOfWeek).get(),
-    db.collection(COLLECTIONS.homework).where("dueDate", "<=", weekFromNow).orderBy("dueDate", "asc").limit(5).get(),
+    db.collection(COLLECTIONS.classSessions).where("studentId", "==", studentId).get(),
+    db.collection(COLLECTIONS.homework).where("dueDate", "<=", weekFromNow).orderBy("dueDate", "asc").get(),
     db.collection(COLLECTIONS.homeworkSubmissions).where("studentId", "==", studentId).get(),
     db.collection(COLLECTIONS.articles).orderBy("createdAt", "desc").limit(5).get(),
     db.collection(COLLECTIONS.articleReads).where("studentId", "==", studentId).get(),
@@ -43,6 +44,7 @@ export default async function DashboardHome() {
 
   const todaysClasses = classSnap.docs
     .map((d) => ({ id: d.id, ...d.data() }) as WithId<ClassSessionDoc>)
+    .filter((c) => c.date === todayKey)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   const mySubmissionByHomeworkId = new Map(
@@ -51,11 +53,14 @@ export default async function DashboardHome() {
       return [submission.homeworkId, submission] as const;
     }),
   );
-  const homeworkDueSoon = homeworkSnap.docs.map((d) => {
-    const hw = { id: d.id, ...d.data() } as WithId<HomeworkDoc>;
-    const submission = mySubmissionByHomeworkId.get(d.id);
-    return { ...hw, submissions: submission ? [submission] : [] };
-  });
+  const homeworkDueSoon = homeworkSnap.docs
+    .filter((d) => ((d.data() as HomeworkDoc).assignedStudentIds ?? []).includes(studentId))
+    .slice(0, 5)
+    .map((d) => {
+      const hw = { id: d.id, ...d.data() } as WithId<HomeworkDoc>;
+      const submission = mySubmissionByHomeworkId.get(d.id);
+      return { ...hw, submissions: submission ? [submission] : [] };
+    });
 
   const myReadByArticleId = new Map(
     readsSnap.docs.map((d) => {
@@ -116,10 +121,12 @@ export default async function DashboardHome() {
         ) : (
           <div className="space-y-2">
             {todaysClasses.map((c) => (
-              <div key={c.id} className="rounded-lg border border-slate-100 px-3 py-2 text-sm">
-                <span className="font-medium">{c.startTime}-{c.endTime}</span> — {c.subject}
-                {c.teacher ? ` · ${c.teacher}` : ""}
-                {c.room ? ` · ${c.room}` : ""}
+              <div
+                key={c.id}
+                className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
+              >
+                <span className="font-medium">{c.startTime}-{c.endTime}</span>
+                <Badge tone={c.status === "taken" ? "success" : "default"}>{c.status}</Badge>
               </div>
             ))}
           </div>
@@ -146,7 +153,7 @@ export default async function DashboardHome() {
                   className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
                 >
                   <span>
-                    {hw.title} <span className="text-slate-500">({hw.subject})</span> — due{" "}
+                    {hw.title} {hw.subject && <span className="text-slate-500">({hw.subject})</span>} — due{" "}
                     {new Date(hw.dueDate).toLocaleDateString()}
                   </span>
                   <Badge tone={submitted ? "success" : overdue ? "danger" : "warning"}>

@@ -14,6 +14,7 @@ export const COLLECTIONS = {
   availability: `${PREFIX}_availability`,
   tasks: `${PREFIX}_tasks`,
   scheduledTasks: `${PREFIX}_scheduledTasks`,
+  rescheduleRequests: `${PREFIX}_rescheduleRequests`,
 } as const;
 
 export const STORAGE_PREFIX = PREFIX;

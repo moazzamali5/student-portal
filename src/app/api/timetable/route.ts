@@ -1,41 +1,39 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
 import { COLLECTIONS } from "@/lib/collections";
-import { requireAdmin, requireUser } from "@/lib/api-auth";
+import { requireAdmin, requireApprovedParent, requireUser } from "@/lib/api-auth";
 import type { ClassSessionDoc, WithId } from "@/lib/types";
 
-export async function GET() {
-  const { error } = await requireUser();
+export async function GET(request: Request) {
+  const { session, error } = await requireUser();
   if (error) return error;
 
-  const snap = await adminDb().collection(COLLECTIONS.classSessions).get();
-  const sessions = snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }) as WithId<ClassSessionDoc>)
-    .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime));
-
-  return NextResponse.json(sessions);
-}
-
-const createSchema = z.object({
-  dayOfWeek: z.number().int().min(0).max(6),
-  subject: z.string().min(1).max(100),
-  teacher: z.string().max(100).optional(),
-  room: z.string().max(50).optional(),
-  startTime: z.string().regex(/^\d{2}:\d{2}$/),
-  endTime: z.string().regex(/^\d{2}:\d{2}$/),
-});
-
-export async function POST(request: Request) {
-  const { error } = await requireAdmin();
-  if (error) return error;
-
-  const parsed = createSchema.safeParse(await request.json());
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  let studentId: string;
+  if (session.user.role === "STUDENT") {
+    studentId = session.user.id;
+  } else if (session.user.role === "PARENT") {
+    const parentCheck = await requireApprovedParent();
+    if (parentCheck.error) return parentCheck.error;
+    const childId = new URL(request.url).searchParams.get("child");
+    if (!childId || !parentCheck.linkedStudentIds.includes(childId)) {
+      return NextResponse.json({ error: "Specify a valid child." }, { status: 400 });
+    }
+    studentId = childId;
+  } else {
+    // ADMIN — must specify which student's timetable to view.
+    const adminCheck = await requireAdmin();
+    if (adminCheck.error) return adminCheck.error;
+    const requested = new URL(request.url).searchParams.get("student");
+    if (!requested) {
+      return NextResponse.json({ error: "Specify a student." }, { status: 400 });
+    }
+    studentId = requested;
   }
 
-  const data = { ...parsed.data, createdAt: new Date().toISOString() };
-  const ref = await adminDb().collection(COLLECTIONS.classSessions).add(data);
-  return NextResponse.json({ id: ref.id, ...data }, { status: 201 });
+  const snap = await adminDb().collection(COLLECTIONS.classSessions).where("studentId", "==", studentId).get();
+  const sessions = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }) as WithId<ClassSessionDoc>)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+
+  return NextResponse.json(sessions);
 }

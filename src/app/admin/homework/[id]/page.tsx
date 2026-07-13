@@ -13,7 +13,7 @@ type Row = {
 
 export default function AdminHomeworkDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [homework, setHomework] = useState<{ title: string; subject: string; dueDate: string } | null>(null);
+  const [homework, setHomework] = useState<{ title: string; subject: string | null; dueDate: string } | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export default function AdminHomeworkDetailPage({ params }: { params: Promise<{ 
         </Link>
         <h1 className="mt-2 text-xl font-semibold text-slate-900">{homework.title}</h1>
         <p className="text-sm text-slate-600">
-          {homework.subject} · Due {new Date(homework.dueDate).toLocaleDateString()}
+          {homework.subject ? `${homework.subject} · ` : ""}Due {new Date(homework.dueDate).toLocaleDateString()}
         </p>
       </div>
 

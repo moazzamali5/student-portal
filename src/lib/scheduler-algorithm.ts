@@ -1,3 +1,5 @@
+import { toLocalDateKey } from "@/lib/date-utils";
+
 type TimeBlock = { dayOfWeek: number; startTime: string; endTime: string };
 type DateBlock = { date: string; startTime: string; endTime: string };
 type TaskInput = { id: string; durationMinutes: number; deadline: string | null };
@@ -41,7 +43,7 @@ function subtractBusy(free: [number, number][], busy: [number, number][]): [numb
 // first free interval each one fits. Tasks aren't split across intervals.
 export function generateSchedule(
   availability: TimeBlock[],
-  classSessions: TimeBlock[],
+  classSessions: DateBlock[],
   acceptedTasks: DateBlock[],
   tasks: TaskInput[],
   startDate: Date,
@@ -60,14 +62,14 @@ export function generateSchedule(
   for (let dayOffset = 0; dayOffset < days; dayOffset++) {
     const date = new Date(startDate.getTime() + dayOffset * 86400000);
     const dayOfWeek = date.getDay();
-    const dateKey = date.toISOString().slice(0, 10);
+    const dateKey = toLocalDateKey(date);
 
     const freeFromAvailability: [number, number][] = availability
       .filter((a) => a.dayOfWeek === dayOfWeek)
       .map((a) => [timeToMinutes(a.startTime), timeToMinutes(a.endTime)]);
 
     const classBusy: [number, number][] = classSessions
-      .filter((c) => c.dayOfWeek === dayOfWeek)
+      .filter((c) => c.date === dateKey)
       .map((c) => [timeToMinutes(c.startTime), timeToMinutes(c.endTime)]);
 
     const acceptedBusy: [number, number][] = acceptedTasks

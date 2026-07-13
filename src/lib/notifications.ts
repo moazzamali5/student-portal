@@ -1,14 +1,10 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { COLLECTIONS } from "@/lib/collections";
 import { sendMail } from "@/lib/mailer";
-import { DAYS } from "@/lib/constants";
+import { toLocalDateKey } from "@/lib/date-utils";
 import type { ClassSessionDoc, HomeworkDoc, ScheduledTaskDoc, WithId } from "@/lib/types";
 
-type EmailType = "CLASS_REMINDER" | "WEEKLY_SUMMARY" | "TASK_REMINDER";
-
-function todayDateKey(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
+type EmailType = "CLASS_REMINDER" | "WEEKLY_SUMMARY" | "TASK_REMINDER" | "PARENT_WEEKLY_DIGEST";
 
 function isoWeekKey(d: Date) {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -32,19 +28,34 @@ async function markSent(type: EmailType, userId: string, referenceKey: string) {
     .catch(() => {}); // another run already logged it — fine, we just sent a harmless duplicate
 }
 
-// Intended to run every 5 minutes; catches classes starting 55-65 minutes
+function timetableHtmlFor(sessions: WithId<ClassSessionDoc>[]) {
+  return sessions.length
+    ? `<ul>${sessions
+        .map((s) => `<li>${new Date(s.date).toDateString()}: ${s.startTime}-${s.endTime}</li>`)
+        .join("")}</ul>`
+    : "<p>No classes scheduled this week.</p>";
+}
+
+function homeworkHtmlFor(homework: WithId<HomeworkDoc>[]) {
+  return homework.length
+    ? `<ul>${homework.map((h) => `<li>${h.title} — due ${new Date(h.dueDate).toDateString()}</li>`).join("")}</ul>`
+    : "<p>No homework due this week.</p>";
+}
+
+// Intended to run every 5 minutes; catches classes starting 25-35 minutes
 // from now (so a class is only ever inside this window once, given the tick).
 export async function sendClassReminders() {
   const db = adminDb();
   const now = new Date();
-  const dayOfWeek = now.getDay();
-  const windowStart = new Date(now.getTime() + 55 * 60 * 1000);
-  const windowEnd = new Date(now.getTime() + 65 * 60 * 1000);
+  const dateKey = toLocalDateKey(now);
+  const windowStart = new Date(now.getTime() + 25 * 60 * 1000);
+  const windowEnd = new Date(now.getTime() + 35 * 60 * 1000);
 
-  const sessionsSnap = await db.collection(COLLECTIONS.classSessions).where("dayOfWeek", "==", dayOfWeek).get();
+  const sessionsSnap = await db.collection(COLLECTIONS.classSessions).where("date", "==", dateKey).get();
   const dueSessions = sessionsSnap.docs
     .map((d) => ({ id: d.id, ...d.data() }) as WithId<ClassSessionDoc>)
     .filter((s) => {
+      if (s.status === "taken") return false;
       const [h, m] = s.startTime.split(":").map(Number);
       const classTime = new Date(now);
       classTime.setHours(h, m, 0, 0);
@@ -53,36 +64,37 @@ export async function sendClassReminders() {
 
   if (dueSessions.length === 0) return;
 
-  const studentsSnap = await db.collection(COLLECTIONS.users).where("role", "==", "STUDENT").get();
-  const dateKey = todayDateKey(now);
+  const studentDocs = await Promise.all(
+    [...new Set(dueSessions.map((s) => s.studentId))].map((id) => db.collection(COLLECTIONS.users).doc(id).get()),
+  );
+  const studentById = new Map(studentDocs.filter((d) => d.exists).map((d) => [d.id, d.data()!]));
 
-  for (const session of dueSessions) {
-    for (const doc of studentsSnap.docs) {
-      const student = doc.data();
-      const referenceKey = `${session.id}:${dateKey}`;
-      if (await alreadySent("CLASS_REMINDER", doc.id, referenceKey)) continue;
+  for (const classSession of dueSessions) {
+    const student = studentById.get(classSession.studentId);
+    if (!student) continue;
+    if (await alreadySent("CLASS_REMINDER", classSession.studentId, classSession.id)) continue;
 
-      await sendMail(
-        student.email,
-        `Reminder: ${session.subject} starts in about an hour`,
-        `<p>Hi ${student.name},</p>
-         <p><strong>${session.subject}</strong> starts at ${session.startTime}${
-          session.room ? ` in ${session.room}` : ""
-        }${session.teacher ? ` with ${session.teacher}` : ""}.</p>`,
-      );
+    await sendMail(
+      student.email,
+      "Reminder: your class starts in 30 minutes",
+      `<p>Hi ${student.name},</p><p>Your class starts at ${classSession.startTime} today.${
+        classSession.classLink ? ` <a href="${classSession.classLink}">Join here</a>.` : ""
+      }</p>`,
+    );
 
-      await markSent("CLASS_REMINDER", doc.id, referenceKey);
-    }
+    await markSent("CLASS_REMINDER", classSession.studentId, classSession.id);
   }
 }
 
 // Intended to run once at the start of the week (Monday 06:00) — sends every
-// student their week's timetable plus homework due in the next 7 days.
+// student their own classes and homework due in the next 7 days.
 export async function sendWeeklyDigest() {
   const db = adminDb();
   const now = new Date();
   const weekKey = isoWeekKey(now);
   const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const todayKey = toLocalDateKey(now);
+  const weekFromNowKey = toLocalDateKey(weekFromNow);
 
   const [studentsSnap, sessionsSnap, homeworkSnap] = await Promise.all([
     db.collection(COLLECTIONS.users).where("role", "==", "STUDENT").get(),
@@ -95,37 +107,77 @@ export async function sendWeeklyDigest() {
       .get(),
   ]);
 
-  const sessions = sessionsSnap.docs
-    .map((d) => ({ id: d.id, ...d.data() }) as WithId<ClassSessionDoc>)
-    .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime));
+  const sessions = sessionsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as WithId<ClassSessionDoc>);
   const homework = homeworkSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as WithId<HomeworkDoc>);
-
-  const timetableHtml = DAYS.map((day, idx) => {
-    const daySessions = sessions.filter((s) => s.dayOfWeek === idx);
-    if (daySessions.length === 0) return "";
-    const items = daySessions
-      .map((s) => `<li>${s.startTime}-${s.endTime}: ${s.subject}${s.room ? ` (${s.room})` : ""}</li>`)
-      .join("");
-    return `<p><strong>${day}</strong></p><ul>${items}</ul>`;
-  }).join("");
-
-  const homeworkHtml = homework.length
-    ? `<ul>${homework
-        .map((h) => `<li>${h.title} (${h.subject}) — due ${new Date(h.dueDate).toDateString()}</li>`)
-        .join("")}</ul>`
-    : "<p>No homework due this week.</p>";
 
   for (const doc of studentsSnap.docs) {
     const student = doc.data();
     if (await alreadySent("WEEKLY_SUMMARY", doc.id, weekKey)) continue;
 
+    const mySessions = sessions
+      .filter((s) => s.studentId === doc.id && s.date >= todayKey && s.date <= weekFromNowKey)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+    const myHomework = homework.filter((h) => (h.assignedStudentIds ?? []).includes(doc.id));
+
     await sendMail(
       student.email,
       "Your week ahead",
-      `<p>Hi ${student.name}, here's your schedule for the week:</p>${timetableHtml}<p><strong>Homework due this week:</strong></p>${homeworkHtml}`,
+      `<p>Hi ${student.name}, here's your schedule for the week:</p>${timetableHtmlFor(mySessions)}<p><strong>Homework due this week:</strong></p>${homeworkHtmlFor(myHomework)}`,
     );
 
     await markSent("WEEKLY_SUMMARY", doc.id, weekKey);
+  }
+}
+
+// Intended to run every Sunday — sends each approved parent one email
+// covering all their linked children's upcoming week (separate from the
+// Monday student digest since the cadence and audience both differ).
+export async function sendParentWeeklyDigest() {
+  const db = adminDb();
+  const now = new Date();
+  const weekKey = isoWeekKey(now);
+  const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const todayKey = toLocalDateKey(now);
+  const weekFromNowKey = toLocalDateKey(weekFromNow);
+
+  const [parentsSnap, sessionsSnap, homeworkSnap] = await Promise.all([
+    db.collection(COLLECTIONS.users).where("role", "==", "PARENT").get(),
+    db.collection(COLLECTIONS.classSessions).get(),
+    db
+      .collection(COLLECTIONS.homework)
+      .where("dueDate", ">=", now.toISOString())
+      .where("dueDate", "<=", weekFromNow.toISOString())
+      .orderBy("dueDate", "asc")
+      .get(),
+  ]);
+
+  const sessions = sessionsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as WithId<ClassSessionDoc>);
+  const homework = homeworkSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as WithId<HomeworkDoc>);
+
+  for (const doc of parentsSnap.docs) {
+    const parent = doc.data();
+    if (parent.approvalStatus !== "APPROVED") continue;
+    const linkedStudentIds: string[] = parent.linkedStudentIds ?? [];
+    if (linkedStudentIds.length === 0) continue;
+    if (await alreadySent("PARENT_WEEKLY_DIGEST", doc.id, weekKey)) continue;
+
+    const childDocs = await Promise.all(linkedStudentIds.map((id) => db.collection(COLLECTIONS.users).doc(id).get()));
+    let bodyHtml = "";
+    for (const childDoc of childDocs) {
+      if (!childDoc.exists) continue;
+      const childName = childDoc.data()!.name as string;
+      const childSessions = sessions
+        .filter((s) => s.studentId === childDoc.id && s.date >= todayKey && s.date <= weekFromNowKey)
+        .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+      const childHomework = homework.filter((h) => (h.assignedStudentIds ?? []).includes(childDoc.id));
+
+      bodyHtml += `<h3>${childName}</h3>${timetableHtmlFor(childSessions)}${homeworkHtmlFor(childHomework)}`;
+    }
+    if (!bodyHtml) continue;
+
+    await sendMail(parent.email, "Your child's week ahead", `<p>Hi ${parent.name}, here's the week ahead:</p>${bodyHtml}`);
+
+    await markSent("PARENT_WEEKLY_DIGEST", doc.id, weekKey);
   }
 }
 
@@ -134,7 +186,7 @@ export async function sendWeeklyDigest() {
 export async function sendTaskReminders() {
   const db = adminDb();
   const now = new Date();
-  const dateKey = todayDateKey(now);
+  const dateKey = toLocalDateKey(now);
   const windowStart = new Date(now.getTime() + 25 * 60 * 1000);
   const windowEnd = new Date(now.getTime() + 35 * 60 * 1000);
 

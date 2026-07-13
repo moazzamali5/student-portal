@@ -28,3 +28,17 @@ export function formatAgendaDateLabel(dateKey: string, todayKey: string): string
     month: "short",
   });
 }
+
+// Stored/edited as 24-hour "HH:MM" (native <input type="time"> values are
+// always 24h regardless of locale) but displayed as 12-hour with AM/PM
+// everywhere a user just reads a time rather than editing it.
+export function formatTime12h(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+export function formatTimeRange12h(start: string, end: string): string {
+  return `${formatTime12h(start)} - ${formatTime12h(end)}`;
+}

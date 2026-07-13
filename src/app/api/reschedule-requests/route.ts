@@ -5,6 +5,7 @@ import { COLLECTIONS } from "@/lib/collections";
 import { requireAdmin, requireUser } from "@/lib/api-auth";
 import { sendMail } from "@/lib/mailer";
 import { appUrl, emailButton, renderEmail } from "@/lib/email-template";
+import { formatTimeRange12h } from "@/lib/date-utils";
 import { hasScheduleClash } from "@/lib/schedule-clash";
 import type { ClassSessionDoc, RescheduleRequestDoc, WithId } from "@/lib/types";
 
@@ -76,9 +77,9 @@ export async function POST(request: Request) {
       bodyHtml: `
         <p><strong>${studentName}</strong> requested to move their class:</p>
         <p style="color:#334155;">
-          ${new Date(original.date).toDateString()} ${original.startTime}-${original.endTime}
+          ${new Date(original.date).toDateString()} ${formatTimeRange12h(original.startTime, original.endTime)}
           &rarr;
-          ${new Date(parsed.data.newDate).toDateString()} ${parsed.data.newStartTime}-${parsed.data.newEndTime}
+          ${new Date(parsed.data.newDate).toDateString()} ${formatTimeRange12h(parsed.data.newStartTime, parsed.data.newEndTime)}
         </p>
         ${emailButton("Review request", appUrl("/admin/reschedule-requests"))}
       `,

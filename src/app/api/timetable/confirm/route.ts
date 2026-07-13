@@ -5,6 +5,7 @@ import { COLLECTIONS } from "@/lib/collections";
 import { requireAdmin } from "@/lib/api-auth";
 import { sendMail } from "@/lib/mailer";
 import { appUrl, emailButton, emailList, renderEmail } from "@/lib/email-template";
+import { formatTimeRange12h } from "@/lib/date-utils";
 
 const entrySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 
   const studentDocs = await Promise.all(studentIds.map((id) => db.collection(COLLECTIONS.users).doc(id).get()));
   const itemsHtml = emailList(
-    sortedEntries.map((e) => `${new Date(e.date).toDateString()}: ${e.startTime}-${e.endTime}`),
+    sortedEntries.map((e) => `${new Date(e.date).toDateString()}: ${formatTimeRange12h(e.startTime, e.endTime)}`),
     "No classes scheduled.",
   );
   for (const doc of studentDocs) {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Card, EmptyState, ErrorText, Skeleton } from "@/components/ui";
 import { ClipboardIcon } from "@/components/icons";
+import { formatTimeRange12h } from "@/lib/date-utils";
 
 type RescheduleRequest = {
   id: string;
@@ -75,16 +76,17 @@ export default function AdminRescheduleRequestsPage() {
             {pending.map((r) => (
               <div
                 key={r.id}
-                className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
+                className="flex flex-col gap-3 rounded-lg border border-slate-100 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <p className="font-medium text-slate-900">{r.studentName}</p>
                   <p className="text-slate-600">
-                    {new Date(r.originalDate).toDateString()} {r.originalStartTime}-{r.originalEndTime} →{" "}
-                    {new Date(r.newDate).toDateString()} {r.newStartTime}-{r.newEndTime}
+                    {new Date(r.originalDate).toDateString()} {formatTimeRange12h(r.originalStartTime, r.originalEndTime)}{" "}
+                    →{" "}
+                    {new Date(r.newDate).toDateString()} {formatTimeRange12h(r.newStartTime, r.newEndTime)}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button onClick={() => decide(r.id, "APPROVED")}>Approve</Button>
                   <Button variant="danger" onClick={() => decide(r.id, "REJECTED")}>
                     Reject
@@ -105,11 +107,11 @@ export default function AdminRescheduleRequestsPage() {
             {decided.map((r) => (
               <div
                 key={r.id}
-                className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm"
+                className="flex flex-col gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
               >
                 <span className="text-slate-900">
-                  {r.studentName}: {new Date(r.originalDate).toDateString()} {r.originalStartTime}-
-                  {r.originalEndTime} → {new Date(r.newDate).toDateString()} {r.newStartTime}-{r.newEndTime}
+                  {r.studentName}: {new Date(r.originalDate).toDateString()} {formatTimeRange12h(r.originalStartTime, r.originalEndTime)}{" "}
+                  → {new Date(r.newDate).toDateString()} {formatTimeRange12h(r.newStartTime, r.newEndTime)}
                 </span>
                 <Badge tone={r.status === "APPROVED" ? "success" : "danger"}>{r.status}</Badge>
               </div>

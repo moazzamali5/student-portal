@@ -1,7 +1,7 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { COLLECTIONS } from "@/lib/collections";
 import { sendMail } from "@/lib/mailer";
-import { toLocalDateKey } from "@/lib/date-utils";
+import { toLocalDateKey, formatTime12h, formatTimeRange12h } from "@/lib/date-utils";
 import { appUrl, emailButton, emailList, renderEmail } from "@/lib/email-template";
 import type { ClassSessionDoc, HomeworkDoc, ScheduledTaskDoc, WithId } from "@/lib/types";
 
@@ -31,7 +31,7 @@ async function markSent(type: EmailType, userId: string, referenceKey: string) {
 
 function timetableHtmlFor(sessions: WithId<ClassSessionDoc>[]) {
   return emailList(
-    sessions.map((s) => `${new Date(s.date).toDateString()}: ${s.startTime}-${s.endTime}`),
+    sessions.map((s) => `${new Date(s.date).toDateString()}: ${formatTimeRange12h(s.startTime, s.endTime)}`),
     "No classes scheduled this week.",
   );
 }
@@ -80,10 +80,10 @@ export async function sendClassReminders() {
       "Reminder: your class starts in 30 minutes",
       renderEmail({
         heading: "Your class starts soon",
-        preheader: `Your class starts at ${classSession.startTime} today.`,
+        preheader: `Your class starts at ${formatTime12h(classSession.startTime)} today.`,
         bodyHtml: `
           <p>Hi ${student.name},</p>
-          <p>Your class starts at <strong>${classSession.startTime}</strong> today.</p>
+          <p>Your class starts at <strong>${formatTime12h(classSession.startTime)}</strong> today.</p>
           ${classSession.classLink ? emailButton("Join class", classSession.classLink) : ""}
           <p style="margin-top:18px;font-size:13px;">
             <a href="${appUrl("/dashboard/timetable")}" style="color:#4f46e5;">View your full timetable in the portal →</a>
@@ -255,10 +255,10 @@ export async function sendTaskReminders() {
       `Reminder: ${title} starts in 30 minutes`,
       renderEmail({
         heading: "Your task starts soon",
-        preheader: `${title} is scheduled from ${s.startTime} to ${s.endTime} today.`,
+        preheader: `${title} is scheduled from ${formatTimeRange12h(s.startTime, s.endTime)} today.`,
         bodyHtml: `
           <p>Hi ${student.name},</p>
-          <p><strong>${title}</strong> is scheduled from <strong>${s.startTime}</strong> to <strong>${s.endTime}</strong> today.</p>
+          <p><strong>${title}</strong> is scheduled from <strong>${formatTimeRange12h(s.startTime, s.endTime)}</strong> today.</p>
           ${emailButton("View planner", appUrl("/dashboard/planner"))}
         `,
       }),

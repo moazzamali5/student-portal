@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Card, ErrorText, Input, Label } from "@/components/ui";
 import { DAYS_SHORT } from "@/lib/constants";
+import { formatTimeRange12h } from "@/lib/date-utils";
 
 type Availability = { id: string; dayOfWeek: number; startTime: string; endTime: string };
 type Task = {
@@ -165,7 +166,7 @@ export default function PlannerPage() {
             {availability.map((a) => (
               <div key={a.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5 text-sm">
                 <span className="text-slate-900">
-                  {DAYS_SHORT[a.dayOfWeek]} {a.startTime}-{a.endTime}
+                  {DAYS_SHORT[a.dayOfWeek]} {formatTimeRange12h(a.startTime, a.endTime)}
                 </span>
                 <button onClick={() => deleteAvailability(a.id)} className="text-xs text-red-600 hover:underline">
                   Remove
@@ -261,7 +262,7 @@ export default function PlannerPage() {
                   <ul className="ml-4 list-disc text-slate-600">
                     {items.map((s) => (
                       <li key={s.id}>
-                        {s.startTime}-{s.endTime}: {taskTitleById.get(s.taskId) ?? "Task"}
+                        {formatTimeRange12h(s.startTime, s.endTime)}: {taskTitleById.get(s.taskId) ?? "Task"}
                       </li>
                     ))}
                   </ul>
@@ -283,7 +284,7 @@ export default function PlannerPage() {
                   <ul className="ml-4 list-disc text-slate-600">
                     {items.map((s) => (
                       <li key={s.id}>
-                        {s.startTime}-{s.endTime}: {taskTitleById.get(s.taskId) ?? "Task"}
+                        {formatTimeRange12h(s.startTime, s.endTime)}: {taskTitleById.get(s.taskId) ?? "Task"}
                       </li>
                     ))}
                   </ul>

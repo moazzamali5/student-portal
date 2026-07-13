@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Card, EmptyState, Skeleton } from "@/components/ui";
 import { CalendarIcon } from "@/components/icons";
-import { toLocalDateKey, formatAgendaDateLabel } from "@/lib/date-utils";
+import { toLocalDateKey, formatAgendaDateLabel, formatTimeRange12h } from "@/lib/date-utils";
 import type { AdminAgendaEntry } from "@/app/api/timetable/route";
 
 export function AdminAgendaView() {
@@ -56,23 +56,21 @@ export function AdminAgendaView() {
             return (
               <Card
                 key={entry.id}
-                className="animate-fade-up flex items-center justify-between gap-4"
+                className="animate-fade-up flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
                 style={{ animationDelay: `${delay}ms` }}
               >
-                <div className="flex items-center gap-3">
-                  <div>
-                    <p className="font-medium text-slate-900">{entry.studentName}</p>
-                    <p className="text-sm text-slate-500">
-                      {entry.startTime}-{entry.endTime}
-                      {(entry.rollNumber || entry.className) && (
-                        <span className="ml-2 text-slate-400">
-                          {[entry.rollNumber, entry.className].filter(Boolean).join(" · ")}
-                        </span>
-                      )}
-                    </p>
-                  </div>
+                <div>
+                  <p className="font-medium text-slate-900">{entry.studentName}</p>
+                  <p className="text-sm text-slate-500">
+                    {formatTimeRange12h(entry.startTime, entry.endTime)}
+                    {(entry.rollNumber || entry.className) && (
+                      <span className="ml-2 text-slate-400">
+                        {[entry.rollNumber, entry.className].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={entry.status === "taken" ? "success" : "default"}>{entry.status}</Badge>
                   {entry.classLink && (
                     <a

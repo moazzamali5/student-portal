@@ -6,6 +6,7 @@ import { Badge, Button, Card, EmptyState } from "@/components/ui";
 import { CalendarIcon } from "@/components/icons";
 import { joinClass } from "@/lib/join-class";
 import { useToast } from "@/components/toast";
+import { formatTimeRange12h } from "@/lib/date-utils";
 
 export type TodayClassSession = {
   id: string;
@@ -99,15 +100,13 @@ export function TodayClassesCard({
       <div className="p-5 space-y-2">
         {hero && (
           <div className="animate-fade-up rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 p-4 text-white">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <span className="mb-2 inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium text-white">
                   <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
                   {featured ? "Live now" : "Starting soon"}
                 </span>
-                <p className="text-lg font-semibold">
-                  {hero.startTime}-{hero.endTime}
-                </p>
+                <p className="text-lg font-semibold">{formatTimeRange12h(hero.startTime, hero.endTime)}</p>
               </div>
               {hero.classLink && <JoinButton session={hero} tone="hero" />}
             </div>
@@ -129,12 +128,10 @@ export function TodayClassesCard({
           rest.map((s) => (
             <div
               key={s.id}
-              className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-100 px-3 py-2 text-sm"
             >
-              <span className="font-medium">
-                {s.startTime}-{s.endTime}
-              </span>
-              <div className="flex items-center gap-2">
+              <span className="font-medium">{formatTimeRange12h(s.startTime, s.endTime)}</span>
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge tone={s.status === "taken" ? "success" : "default"}>{s.status}</Badge>
                 {s.status === "scheduled" && s.classLink && <JoinButton session={s} />}
               </div>

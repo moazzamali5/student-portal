@@ -5,6 +5,7 @@ import { Badge, Button, Card, EmptyState, ErrorText, Input, Skeleton } from "@/c
 import { CalendarIcon } from "@/components/icons";
 import { joinClass } from "@/lib/join-class";
 import { useToast } from "@/components/toast";
+import { formatTimeRange12h } from "@/lib/date-utils";
 
 type ClassSession = {
   id: string;
@@ -99,19 +100,17 @@ export default function StudentTimetablePage() {
             const pending = pendingRequestByClassId.get(s.id);
             return (
               <Card key={s.id} className="animate-fade-up" style={{ animationDelay: `${i * 40}ms` }}>
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-medium text-slate-900">{new Date(s.date).toDateString()}</p>
-                    <p className="text-sm text-slate-500">
-                      {s.startTime}-{s.endTime}
-                    </p>
+                    <p className="text-sm text-slate-500">{formatTimeRange12h(s.startTime, s.endTime)}</p>
                     {pending && (
                       <Badge tone="warning" className="mt-1">
                         Reschedule pending approval
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge tone={s.status === "taken" ? "success" : "default"}>{s.status}</Badge>
                     {s.classLink && s.status === "scheduled" && (
                       <Button variant="secondary" loading={joiningId === s.id} onClick={() => handleJoin(s)}>
@@ -130,7 +129,7 @@ export default function StudentTimetablePage() {
                 </div>
 
                 {rescheduling === s.id && (
-                  <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3">
+                  <div className="mt-3 grid grid-cols-1 gap-2 border-t border-slate-100 pt-3 sm:grid-cols-3">
                     <Input
                       type="date"
                       value={form.newDate}

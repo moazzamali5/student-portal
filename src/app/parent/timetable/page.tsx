@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useChildren, ChildSwitcher } from "@/components/child-switcher";
 import { Badge, Card, EmptyState, Skeleton } from "@/components/ui";
 import { CalendarIcon } from "@/components/icons";
+import { formatTimeRange12h } from "@/lib/date-utils";
 
 type ClassSession = {
   id: string;
@@ -46,15 +47,19 @@ function TimetableList() {
       ) : (
         <div className="space-y-3">
           {sessions.map((s) => (
-            <Card key={s.id} className="flex items-center justify-between">
+            <Card key={s.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-medium text-slate-900">{new Date(s.date).toDateString()}</p>
-                <p className="text-sm text-slate-500">
-                  {s.startTime}-{s.endTime}
-                  {s.classLink ? ` · ${s.classLink}` : ""}
-                </p>
+                <p className="text-sm text-slate-500">{formatTimeRange12h(s.startTime, s.endTime)}</p>
               </div>
-              <Badge tone={s.status === "taken" ? "success" : "default"}>{s.status}</Badge>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={s.status === "taken" ? "success" : "default"}>{s.status}</Badge>
+                {s.classLink && (
+                  <a href={s.classLink} target="_blank" rel="noreferrer" className="text-sm text-indigo-600 hover:underline">
+                    Link
+                  </a>
+                )}
+              </div>
             </Card>
           ))}
         </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Card, EmptyState, ErrorText, Input, Label, Textarea } from "@/components/ui";
 import { CalendarIcon } from "@/components/icons";
+import { formatTimeRange12h } from "@/lib/date-utils";
 import { AdminAgendaView } from "@/components/admin-agenda";
 import { useToast } from "@/components/toast";
 
@@ -205,12 +206,12 @@ export default function AdminTimetablePage() {
                     {sessions.map((s) => (
                       <div
                         key={s.id}
-                        className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
+                        className="flex flex-col gap-2 rounded-lg border border-slate-100 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
                       >
                         <span className="text-slate-900">
-                          {new Date(s.date).toDateString()} · {s.startTime}-{s.endTime}
+                          {new Date(s.date).toDateString()} · {formatTimeRange12h(s.startTime, s.endTime)}
                         </span>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <Badge tone={s.status === "taken" ? "success" : "default"}>{s.status}</Badge>
                           <button onClick={() => handleDelete(s.id)} className="text-red-600 hover:underline">
                             Delete

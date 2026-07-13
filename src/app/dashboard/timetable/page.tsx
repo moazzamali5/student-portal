@@ -25,6 +25,7 @@ export default function StudentTimetablePage() {
   const [form, setForm] = useState({ newDate: "", newStartTime: "", newEndTime: "" });
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [joinNotice, setJoinNotice] = useState<string | null>(null);
 
   async function load() {
     const [sessionsRes, requestsRes] = await Promise.all([
@@ -40,8 +41,13 @@ export default function StudentTimetablePage() {
   }, []);
 
   async function handleJoin(s: ClassSession) {
+    setJoinNotice(null);
     if (s.classLink) window.open(s.classLink, "_blank");
-    await fetch(`/api/timetable/${s.id}/take`, { method: "POST" });
+    const res = await fetch(`/api/timetable/${s.id}/take`, { method: "POST" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setJoinNotice(data.error ?? "Couldn't mark this as taken.");
+    }
     load();
   }
 
@@ -72,6 +78,7 @@ export default function StudentTimetablePage() {
     <div className="space-y-6">
       <h1 className="text-xl font-semibold text-slate-900">Your timetable</h1>
       {status && <p className="text-sm text-emerald-600">{status}</p>}
+      {joinNotice && <p className="text-sm text-amber-600">{joinNotice}</p>}
       <div className="space-y-3">
         {sessions.map((s) => {
           const pending = pendingRequestByClassId.get(s.id);

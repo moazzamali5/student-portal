@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Badge, Button, Card, ErrorText, Input, Label, Textarea } from "@/components/ui";
-import { StudentPicker } from "@/components/student-picker";
 
 type ParsedLine = {
   raw: string;
@@ -25,18 +24,17 @@ type ClassSession = {
 type Student = { id: string; name: string; rollNumber: string | null; className: string | null };
 
 export default function AdminTimetablePage() {
+  const [students, setStudents] = useState<Student[]>([]);
+  const [studentId, setStudentId] = useState("");
+  const [sessions, setSessions] = useState<ClassSession[]>([]);
+
   const [text, setText] = useState("");
   const [classLink, setClassLink] = useState("");
-  const [studentIds, setStudentIds] = useState<string[]>([]);
   const [parsedLines, setParsedLines] = useState<ParsedLine[]>([]);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
-
-  const [students, setStudents] = useState<Student[]>([]);
-  const [viewStudentId, setViewStudentId] = useState("");
-  const [viewSessions, setViewSessions] = useState<ClassSession[]>([]);
 
   useEffect(() => {
     fetch("/api/students-directory")
@@ -44,18 +42,29 @@ export default function AdminTimetablePage() {
       .then(setStudents);
   }, []);
 
-  async function loadViewSessions(studentId: string) {
-    if (!studentId) {
-      setViewSessions([]);
+  async function loadSessions(id: string) {
+    if (!id) {
+      setSessions([]);
       return;
     }
-    const res = await fetch(`/api/timetable?student=${studentId}`);
-    setViewSessions(await res.json());
+    const res = await fetch(`/api/timetable?student=${id}`);
+    setSessions(await res.json());
   }
 
   useEffect(() => {
-    loadViewSessions(viewStudentId);
-  }, [viewStudentId]);
+    loadSessions(studentId);
+  }, [studentId]);
+
+  function selectStudent(id: string) {
+    setStudentId(id);
+    setText("");
+    setClassLink("");
+    setParsedLines([]);
+    setError(null);
+    setSaveStatus(null);
+  }
+
+  const selectedStudent = students.find((s) => s.id === studentId);
 
   async function handleParse() {
     setError(null);
@@ -88,8 +97,8 @@ export default function AdminTimetablePage() {
   async function handleConfirm() {
     setError(null);
     setSaveStatus(null);
-    if (studentIds.length === 0) {
-      setError("Select at least one student.");
+    if (!studentId) {
+      setError("Select a student first.");
       return;
     }
     const entries = parsedLines
@@ -105,17 +114,15 @@ export default function AdminTimetablePage() {
       const res = await fetch("/api/timetable/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentIds, entries }),
+        body: JSON.stringify({ studentIds: [studentId], entries }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to save.");
-      setSaveStatus(`Saved ${data.created} class(es) and emailed the student(s).`);
+      setSaveStatus(`Saved ${data.created} class(es) and emailed ${selectedStudent?.name ?? "the student"}.`);
       setText("");
       setClassLink("");
       setParsedLines([]);
-      const savedForViewedStudent = studentIds.includes(viewStudentId);
-      setStudentIds([]);
-      if (savedForViewedStudent) loadViewSessions(viewStudentId);
+      loadSessions(studentId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save.");
     } finally {
@@ -125,7 +132,7 @@ export default function AdminTimetablePage() {
 
   async function handleDelete(id: string) {
     await fetch(`/api/timetable/${id}`, { method: "DELETE" });
-    loadViewSessions(viewStudentId);
+    loadSessions(studentId);
   }
 
   return (
@@ -133,95 +140,11 @@ export default function AdminTimetablePage() {
       <h1 className="text-xl font-semibold text-slate-900">Timetable</h1>
 
       <Card>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Enter this week&apos;s classes</h2>
-        <p className="mb-3 text-sm text-slate-600">
-          One class per line, e.g. <code>Tuesday: 8 - 10 pm</code> or <code>Friday 10 am</code>. Parse it first,
-          check the result, then confirm.
-        </p>
-        <Textarea
-          rows={5}
-          placeholder={"Tuesday: 8 - 10 pm\nFriday 10 am\nSaturday 10 am\nSunday 11am-1 pm"}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <div className="mt-3 flex items-center gap-3">
-          <Button type="button" variant="secondary" onClick={handleParse} disabled={parsing || !text.trim()}>
-            {parsing ? "Parsing..." : "Parse"}
-          </Button>
-        </div>
-
-        {parsedLines.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Review — edit anything that looks wrong
-            </p>
-            {parsedLines.map((line, idx) => (
-              <div key={idx} className="grid grid-cols-12 items-center gap-2 rounded-lg bg-slate-50 p-2 text-sm">
-                <span className="col-span-3 truncate text-slate-500" title={line.raw}>
-                  {line.raw}
-                </span>
-                <div className="col-span-2">
-                  <Input
-                    type="date"
-                    value={line.date ?? ""}
-                    onChange={(e) => updateLine(idx, { date: e.target.value })}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Input
-                    type="time"
-                    value={line.startTime ?? ""}
-                    onChange={(e) => updateLine(idx, { startTime: e.target.value })}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Input
-                    type="time"
-                    value={line.endTime ?? ""}
-                    onChange={(e) => updateLine(idx, { endTime: e.target.value })}
-                  />
-                </div>
-                <div className="col-span-2">
-                  {line.error ? <ErrorText>{line.error}</ErrorText> : <Badge tone="success">OK</Badge>}
-                </div>
-                <button onClick={() => removeLine(idx)} className="col-span-1 text-xs text-red-600 hover:underline">
-                  Remove
-                </button>
-              </div>
-            ))}
-
-            <div className="pt-2">
-              <Label>Class link (same link used for all these classes)</Label>
-              <Input
-                type="url"
-                placeholder="https://meet.google.com/..."
-                value={classLink}
-                onChange={(e) => setClassLink(e.target.value)}
-              />
-            </div>
-
-            <div className="pt-2">
-              <Label>Assign to</Label>
-              <StudentPicker selected={studentIds} onChange={setStudentIds} />
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <Button type="button" onClick={handleConfirm} disabled={saving}>
-                {saving ? "Saving..." : "Confirm & save"}
-              </Button>
-              <ErrorText>{error}</ErrorText>
-            </div>
-          </div>
-        )}
-        {saveStatus && <p className="mt-3 text-sm text-emerald-600">{saveStatus}</p>}
-      </Card>
-
-      <Card>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">View / manage a student&apos;s timetable</h2>
+        <Label>Student</Label>
         <select
-          className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          value={viewStudentId}
-          onChange={(e) => setViewStudentId(e.target.value)}
+          className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          value={studentId}
+          onChange={(e) => selectStudent(e.target.value)}
         >
           <option value="">Select a student...</option>
           {students.map((s) => (
@@ -230,32 +153,123 @@ export default function AdminTimetablePage() {
             </option>
           ))}
         </select>
+      </Card>
 
-        {viewStudentId && (
-          <div className="mt-3 space-y-2">
-            {viewSessions.length === 0 ? (
-              <p className="text-sm text-slate-500">No classes scheduled.</p>
+      {studentId && (
+        <>
+          <Card>
+            <h2 className="mb-3 text-sm font-semibold text-slate-900">
+              {selectedStudent?.name}&apos;s current timetable
+            </h2>
+            {sessions.length === 0 ? (
+              <p className="text-sm text-slate-500">No classes scheduled yet.</p>
             ) : (
-              viewSessions.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
-                >
-                  <span className="text-slate-900">
-                    {new Date(s.date).toDateString()} · {s.startTime}-{s.endTime}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <Badge tone={s.status === "taken" ? "success" : "default"}>{s.status}</Badge>
-                    <button onClick={() => handleDelete(s.id)} className="text-red-600 hover:underline">
-                      Delete
+              <div className="space-y-2">
+                {sessions.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
+                  >
+                    <span className="text-slate-900">
+                      {new Date(s.date).toDateString()} · {s.startTime}-{s.endTime}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <Badge tone={s.status === "taken" ? "success" : "default"}>{s.status}</Badge>
+                      <button onClick={() => handleDelete(s.id)} className="text-red-600 hover:underline">
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <h2 className="mb-3 text-sm font-semibold text-slate-900">
+              Add {selectedStudent?.name}&apos;s schedule for the week
+            </h2>
+            <p className="mb-3 text-sm text-slate-600">
+              One class per line, e.g. <code>Tuesday: 8 - 10 pm</code> or <code>Friday 10 am</code>. Parse it
+              first, check the result, then confirm.
+            </p>
+            <Textarea
+              rows={5}
+              placeholder={"Tuesday: 8 - 10 pm\nFriday 10 am\nSaturday 10 am\nSunday 11am-1 pm"}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
+            <div className="mt-3 flex items-center gap-3">
+              <Button type="button" variant="secondary" onClick={handleParse} disabled={parsing || !text.trim()}>
+                {parsing ? "Parsing..." : "Parse"}
+              </Button>
+            </div>
+
+            {parsedLines.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Review — edit anything that looks wrong
+                </p>
+                {parsedLines.map((line, idx) => (
+                  <div key={idx} className="grid grid-cols-12 items-center gap-2 rounded-lg bg-slate-50 p-2 text-sm">
+                    <span className="col-span-3 truncate text-slate-500" title={line.raw}>
+                      {line.raw}
+                    </span>
+                    <div className="col-span-2">
+                      <Input
+                        type="date"
+                        value={line.date ?? ""}
+                        onChange={(e) => updateLine(idx, { date: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Input
+                        type="time"
+                        value={line.startTime ?? ""}
+                        onChange={(e) => updateLine(idx, { startTime: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Input
+                        type="time"
+                        value={line.endTime ?? ""}
+                        onChange={(e) => updateLine(idx, { endTime: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      {line.error ? <ErrorText>{line.error}</ErrorText> : <Badge tone="success">OK</Badge>}
+                    </div>
+                    <button
+                      onClick={() => removeLine(idx)}
+                      className="col-span-1 text-xs text-red-600 hover:underline"
+                    >
+                      Remove
                     </button>
                   </div>
+                ))}
+
+                <div className="pt-2">
+                  <Label>Class link (used for all these classes)</Label>
+                  <Input
+                    type="url"
+                    placeholder="https://meet.google.com/..."
+                    value={classLink}
+                    onChange={(e) => setClassLink(e.target.value)}
+                  />
                 </div>
-              ))
+
+                <div className="flex items-center gap-3 pt-2">
+                  <Button type="button" onClick={handleConfirm} disabled={saving}>
+                    {saving ? "Saving..." : "Confirm & save"}
+                  </Button>
+                  <ErrorText>{error}</ErrorText>
+                </div>
+              </div>
             )}
-          </div>
-        )}
-      </Card>
+            {saveStatus && <p className="mt-3 text-sm text-emerald-600">{saveStatus}</p>}
+          </Card>
+        </>
+      )}
     </div>
   );
 }

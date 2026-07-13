@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui";
 
 type Student = { id: string; name: string; rollNumber: string | null; className: string | null };
 
@@ -23,7 +24,7 @@ export function StudentPicker({
     onChange(selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id]);
   }
 
-  if (!students) return <p className="text-sm text-slate-500">Loading students...</p>;
+  if (!students) return <Skeleton className="h-24 w-full" />;
 
   if (students.length === 0) {
     return <p className="text-sm text-slate-500">No students registered yet.</p>;

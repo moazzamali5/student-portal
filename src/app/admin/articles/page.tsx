@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, Card, ErrorText, Input, Label } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorText, Input, Label, Skeleton } from "@/components/ui";
+import { BookIcon } from "@/components/icons";
 
 type Article = {
   id: string;
@@ -14,7 +15,7 @@ type Article = {
 const emptyForm = { title: "", url: "" };
 
 export default function AdminArticlesPage() {
-  const [items, setItems] = useState<Article[]>([]);
+  const [items, setItems] = useState<Article[] | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -77,8 +78,8 @@ export default function AdminArticlesPage() {
             />
           </div>
           <div className="flex items-end gap-3 sm:col-span-1">
-            <Button type="submit" disabled={loading}>
-              {loading ? "Adding..." : "Add article"}
+            <Button type="submit" loading={loading}>
+              Add article
             </Button>
             <ErrorText>{error}</ErrorText>
           </div>
@@ -86,22 +87,32 @@ export default function AdminArticlesPage() {
       </Card>
 
       <div className="space-y-3">
-        {items.map((a) => (
-          <Card key={a.id} className="flex items-center justify-between">
-            <div>
-              <Link href={`/admin/articles/${a.id}`} className="font-medium text-indigo-700 hover:underline">
-                {a.title}
-              </Link>
-              <p className="text-sm text-slate-600">
-                {a.url} · {a.reads.filter((r) => r.closedAt).length} completed
-              </p>
-            </div>
-            <button onClick={() => handleDelete(a.id)} className="text-sm text-red-600 hover:underline">
-              Delete
-            </button>
+        {items === null ? (
+          <>
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-14 w-full" />
+          </>
+        ) : items.length === 0 ? (
+          <Card>
+            <EmptyState icon={<BookIcon />} title="No articles posted yet" />
           </Card>
-        ))}
-        {items.length === 0 && <p className="text-sm text-slate-500">No articles posted yet.</p>}
+        ) : (
+          items.map((a) => (
+            <Card key={a.id} className="flex items-center justify-between">
+              <div>
+                <Link href={`/admin/articles/${a.id}`} className="font-medium text-indigo-700 hover:underline">
+                  {a.title}
+                </Link>
+                <p className="text-sm text-slate-600">
+                  {a.url} · {a.reads.filter((r) => r.closedAt).length} completed
+                </p>
+              </div>
+              <button onClick={() => handleDelete(a.id)} className="text-sm text-red-600 hover:underline">
+                Delete
+              </button>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

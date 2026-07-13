@@ -3,13 +3,27 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { useChildren } from "@/components/child-switcher";
-import { Card } from "@/components/ui";
+import { Card, EmptyState, Skeleton } from "@/components/ui";
+import { UsersIcon } from "@/components/icons";
 
 function ChildrenList() {
   const children = useChildren();
 
-  if (!children) return <p className="text-sm text-slate-500">Loading...</p>;
-  if (children.length === 0) return <p className="text-sm text-slate-500">No children linked to your account yet.</p>;
+  if (!children) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+      </div>
+    );
+  }
+  if (children.length === 0) {
+    return (
+      <Card>
+        <EmptyState icon={<UsersIcon />} title="No children linked to your account yet" />
+      </Card>
+    );
+  }
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -39,14 +53,21 @@ export default function ParentHome() {
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Your children</h1>
         <p className="mt-1 text-sm text-slate-600">
-          The timetable is shared across the whole school —{" "}
+          Each child has their own class schedule —{" "}
           <Link href="/parent/timetable" className="text-indigo-600 hover:underline">
             view it here
           </Link>
           .
         </p>
       </div>
-      <Suspense fallback={<p className="text-sm text-slate-500">Loading...</p>}>
+      <Suspense
+        fallback={
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        }
+      >
         <ChildrenList />
       </Suspense>
     </div>

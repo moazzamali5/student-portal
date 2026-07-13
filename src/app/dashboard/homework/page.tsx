@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Badge, Button, Card, ErrorText } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, ErrorText, Skeleton } from "@/components/ui";
+import { ClipboardIcon } from "@/components/icons";
 
 type Homework = {
   id: string;
@@ -14,7 +15,7 @@ type Homework = {
 };
 
 export default function StudentHomeworkPage() {
-  const [items, setItems] = useState<Homework[]>([]);
+  const [items, setItems] = useState<Homework[] | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -55,7 +56,17 @@ export default function StudentHomeworkPage() {
     <div className="space-y-6">
       <h1 className="text-xl font-semibold text-slate-900">Homework</h1>
       <div className="space-y-3">
-        {items.map((hw) => {
+        {items === null ? (
+          <>
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-28 w-full" />
+          </>
+        ) : items.length === 0 ? (
+          <Card>
+            <EmptyState icon={<ClipboardIcon />} title="No homework assigned yet" />
+          </Card>
+        ) : (
+          items.map((hw) => {
           const submission = hw.submissions[0];
           const overdue = !submission && new Date(hw.dueDate) < new Date();
           return (
@@ -109,17 +120,17 @@ export default function StudentHomeworkPage() {
                 />
                 <Button
                   variant="secondary"
-                  disabled={uploadingId === hw.id}
+                  loading={uploadingId === hw.id}
                   onClick={() => fileInputs.current[hw.id]?.click()}
                 >
-                  {uploadingId === hw.id ? "Uploading..." : submission ? "Resubmit (PDF/PNG)" : "Upload (PDF/PNG)"}
+                  {submission ? "Resubmit (PDF/PNG)" : "Upload (PDF/PNG)"}
                 </Button>
                 <ErrorText>{errors[hw.id]}</ErrorText>
               </div>
             </Card>
           );
-        })}
-        {items.length === 0 && <p className="text-sm text-slate-500">No homework assigned yet.</p>}
+          })
+        )}
       </div>
     </div>
   );

@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, Button, Card, ErrorText, Input, Label, Textarea } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, ErrorText, Input, Label, Textarea } from "@/components/ui";
+import { CalendarIcon } from "@/components/icons";
+import { AdminAgendaView } from "@/components/admin-agenda";
+import { useToast } from "@/components/toast";
 
 type ParsedLine = {
   raw: string;
@@ -23,7 +26,31 @@ type ClassSession = {
 
 type Student = { id: string; name: string; rollNumber: string | null; className: string | null };
 
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+        active ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function AdminTimetablePage() {
+  const toast = useToast();
+  const [tab, setTab] = useState<"agenda" | "manage">("agenda");
+
   const [students, setStudents] = useState<Student[]>([]);
   const [studentId, setStudentId] = useState("");
   const [sessions, setSessions] = useState<ClassSession[]>([]);
@@ -34,7 +61,6 @@ export default function AdminTimetablePage() {
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/students-directory")
@@ -61,14 +87,12 @@ export default function AdminTimetablePage() {
     setClassLink("");
     setParsedLines([]);
     setError(null);
-    setSaveStatus(null);
   }
 
   const selectedStudent = students.find((s) => s.id === studentId);
 
   async function handleParse() {
     setError(null);
-    setSaveStatus(null);
     setParsing(true);
     try {
       const res = await fetch("/api/timetable/parse", {
@@ -96,7 +120,6 @@ export default function AdminTimetablePage() {
 
   async function handleConfirm() {
     setError(null);
-    setSaveStatus(null);
     if (!studentId) {
       setError("Select a student first.");
       return;
@@ -118,7 +141,7 @@ export default function AdminTimetablePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to save.");
-      setSaveStatus(`Saved ${data.created} class(es) and emailed ${selectedStudent?.name ?? "the student"}.`);
+      toast.show(`Saved ${data.created} class(es) and emailed ${selectedStudent?.name ?? "the student"}.`, "success");
       setText("");
       setClassLink("");
       setParsedLines([]);
@@ -137,137 +160,155 @@ export default function AdminTimetablePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-slate-900">Timetable</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold text-slate-900">Timetable</h1>
+        <div className="flex gap-2">
+          <TabButton active={tab === "agenda"} onClick={() => setTab("agenda")}>
+            All students
+          </TabButton>
+          <TabButton active={tab === "manage"} onClick={() => setTab("manage")}>
+            Add classes
+          </TabButton>
+        </div>
+      </div>
 
-      <Card>
-        <Label>Student</Label>
-        <select
-          className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          value={studentId}
-          onChange={(e) => selectStudent(e.target.value)}
-        >
-          <option value="">Select a student...</option>
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </Card>
+      {tab === "agenda" && <AdminAgendaView />}
 
-      {studentId && (
+      {tab === "manage" && (
         <>
           <Card>
-            <h2 className="mb-3 text-sm font-semibold text-slate-900">
-              {selectedStudent?.name}&apos;s current timetable
-            </h2>
-            {sessions.length === 0 ? (
-              <p className="text-sm text-slate-500">No classes scheduled yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {sessions.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
-                  >
-                    <span className="text-slate-900">
-                      {new Date(s.date).toDateString()} · {s.startTime}-{s.endTime}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <Badge tone={s.status === "taken" ? "success" : "default"}>{s.status}</Badge>
-                      <button onClick={() => handleDelete(s.id)} className="text-red-600 hover:underline">
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <Label>Student</Label>
+            <select
+              className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              value={studentId}
+              onChange={(e) => selectStudent(e.target.value)}
+            >
+              <option value="">Select a student...</option>
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
           </Card>
 
-          <Card>
-            <h2 className="mb-3 text-sm font-semibold text-slate-900">
-              Add {selectedStudent?.name}&apos;s schedule for the week
-            </h2>
-            <p className="mb-3 text-sm text-slate-600">
-              One class per line, e.g. <code>Tuesday: 8 - 10 pm</code> or <code>Friday 10 am</code>. Parse it
-              first, check the result, then confirm.
-            </p>
-            <Textarea
-              rows={5}
-              placeholder={"Tuesday: 8 - 10 pm\nFriday 10 am\nSaturday 10 am\nSunday 11am-1 pm"}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-            />
-            <div className="mt-3 flex items-center gap-3">
-              <Button type="button" variant="secondary" onClick={handleParse} disabled={parsing || !text.trim()}>
-                {parsing ? "Parsing..." : "Parse"}
-              </Button>
-            </div>
+          {studentId && (
+            <>
+              <Card>
+                <h2 className="mb-3 text-sm font-semibold text-slate-900">
+                  {selectedStudent?.name}&apos;s current timetable
+                </h2>
+                {sessions.length === 0 ? (
+                  <EmptyState icon={<CalendarIcon />} title="No classes scheduled yet" />
+                ) : (
+                  <div className="space-y-2">
+                    {sessions.map((s) => (
+                      <div
+                        key={s.id}
+                        className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
+                      >
+                        <span className="text-slate-900">
+                          {new Date(s.date).toDateString()} · {s.startTime}-{s.endTime}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <Badge tone={s.status === "taken" ? "success" : "default"}>{s.status}</Badge>
+                          <button onClick={() => handleDelete(s.id)} className="text-red-600 hover:underline">
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
 
-            {parsedLines.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                  Review — edit anything that looks wrong
+              <Card>
+                <h2 className="mb-3 text-sm font-semibold text-slate-900">
+                  Add {selectedStudent?.name}&apos;s schedule for the week
+                </h2>
+                <p className="mb-3 text-sm text-slate-600">
+                  One class per line, e.g. <code>Tuesday: 8 - 10 pm</code> or <code>Friday 10 am</code>. Parse it
+                  first, check the result, then confirm.
                 </p>
-                {parsedLines.map((line, idx) => (
-                  <div key={idx} className="grid grid-cols-12 items-center gap-2 rounded-lg bg-slate-50 p-2 text-sm">
-                    <span className="col-span-3 truncate text-slate-500" title={line.raw}>
-                      {line.raw}
-                    </span>
-                    <div className="col-span-2">
-                      <Input
-                        type="date"
-                        value={line.date ?? ""}
-                        onChange={(e) => updateLine(idx, { date: e.target.value })}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Input
-                        type="time"
-                        value={line.startTime ?? ""}
-                        onChange={(e) => updateLine(idx, { startTime: e.target.value })}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Input
-                        type="time"
-                        value={line.endTime ?? ""}
-                        onChange={(e) => updateLine(idx, { endTime: e.target.value })}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      {line.error ? <ErrorText>{line.error}</ErrorText> : <Badge tone="success">OK</Badge>}
-                    </div>
-                    <button
-                      onClick={() => removeLine(idx)}
-                      className="col-span-1 text-xs text-red-600 hover:underline"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-
-                <div className="pt-2">
-                  <Label>Class link (used for all these classes)</Label>
-                  <Input
-                    type="url"
-                    placeholder="https://meet.google.com/..."
-                    value={classLink}
-                    onChange={(e) => setClassLink(e.target.value)}
-                  />
-                </div>
-
-                <div className="flex items-center gap-3 pt-2">
-                  <Button type="button" onClick={handleConfirm} disabled={saving}>
-                    {saving ? "Saving..." : "Confirm & save"}
+                <Textarea
+                  rows={5}
+                  placeholder={"Tuesday: 8 - 10 pm\nFriday 10 am\nSaturday 10 am\nSunday 11am-1 pm"}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                />
+                <div className="mt-3 flex items-center gap-3">
+                  <Button type="button" variant="secondary" loading={parsing} onClick={handleParse} disabled={!text.trim()}>
+                    Parse
                   </Button>
-                  <ErrorText>{error}</ErrorText>
                 </div>
-              </div>
-            )}
-            {saveStatus && <p className="mt-3 text-sm text-emerald-600">{saveStatus}</p>}
-          </Card>
+
+                {parsedLines.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                      Review — edit anything that looks wrong
+                    </p>
+                    {parsedLines.map((line, idx) => (
+                      <div
+                        key={idx}
+                        className="grid grid-cols-12 items-center gap-2 rounded-lg bg-slate-50 p-2 text-sm"
+                      >
+                        <span className="col-span-3 truncate text-slate-500" title={line.raw}>
+                          {line.raw}
+                        </span>
+                        <div className="col-span-2">
+                          <Input
+                            type="date"
+                            value={line.date ?? ""}
+                            onChange={(e) => updateLine(idx, { date: e.target.value })}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Input
+                            type="time"
+                            value={line.startTime ?? ""}
+                            onChange={(e) => updateLine(idx, { startTime: e.target.value })}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Input
+                            type="time"
+                            value={line.endTime ?? ""}
+                            onChange={(e) => updateLine(idx, { endTime: e.target.value })}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          {line.error ? <ErrorText>{line.error}</ErrorText> : <Badge tone="success">OK</Badge>}
+                        </div>
+                        <button
+                          onClick={() => removeLine(idx)}
+                          className="col-span-1 text-xs text-red-600 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+
+                    <div className="pt-2">
+                      <Label>Class link (used for all these classes)</Label>
+                      <Input
+                        type="url"
+                        placeholder="https://meet.google.com/..."
+                        value={classLink}
+                        onChange={(e) => setClassLink(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2">
+                      <Button type="button" loading={saving} onClick={handleConfirm}>
+                        Confirm & save
+                      </Button>
+                      <ErrorText>{error}</ErrorText>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            </>
+          )}
         </>
       )}
     </div>

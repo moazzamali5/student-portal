@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useChildren, ChildSwitcher } from "@/components/child-switcher";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Card, EmptyState, Skeleton } from "@/components/ui";
+import { BookIcon } from "@/components/icons";
 
 type Article = {
   id: string;
@@ -26,15 +27,20 @@ function ArticlesList() {
       .then(setItems);
   }, [childId]);
 
-  if (!children) return <p className="text-sm text-slate-500">Loading...</p>;
+  if (!children) return <Skeleton className="h-9 w-64" />;
 
   return (
     <div className="space-y-6">
       <ChildSwitcher students={children} basePath="/parent/articles" />
       {!items ? (
-        <p className="text-sm text-slate-500">Loading...</p>
+        <div className="space-y-3">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
       ) : items.length === 0 ? (
-        <p className="text-sm text-slate-500">No articles posted yet.</p>
+        <Card>
+          <EmptyState icon={<BookIcon />} title="No articles posted yet" />
+        </Card>
       ) : (
         <div className="space-y-3">
           {items.map((a) => {
@@ -63,7 +69,7 @@ export default function ParentArticlesPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold text-slate-900">Articles</h1>
-      <Suspense fallback={<p className="text-sm text-slate-500">Loading...</p>}>
+      <Suspense fallback={<Skeleton className="h-9 w-64" />}>
         <ArticlesList />
       </Suspense>
     </div>

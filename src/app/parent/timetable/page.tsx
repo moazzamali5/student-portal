@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useChildren, ChildSwitcher } from "@/components/child-switcher";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Card, EmptyState, Skeleton } from "@/components/ui";
+import { CalendarIcon } from "@/components/icons";
 
 type ClassSession = {
   id: string;
@@ -28,15 +29,20 @@ function TimetableList() {
       .then(setSessions);
   }, [childId]);
 
-  if (!children) return <p className="text-sm text-slate-500">Loading...</p>;
+  if (!children) return <Skeleton className="h-9 w-64" />;
 
   return (
     <div className="space-y-6">
       <ChildSwitcher students={children} basePath="/parent/timetable" />
       {!sessions ? (
-        <p className="text-sm text-slate-500">Loading...</p>
+        <div className="space-y-3">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
       ) : sessions.length === 0 ? (
-        <p className="text-sm text-slate-500">No classes scheduled yet.</p>
+        <Card>
+          <EmptyState icon={<CalendarIcon />} title="No classes scheduled yet" />
+        </Card>
       ) : (
         <div className="space-y-3">
           {sessions.map((s) => (
@@ -61,7 +67,7 @@ export default function ParentTimetablePage() {
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold text-slate-900">Timetable</h1>
-      <Suspense fallback={<p className="text-sm text-slate-500">Loading...</p>}>
+      <Suspense fallback={<Skeleton className="h-9 w-64" />}>
         <TimetableList />
       </Suspense>
     </div>

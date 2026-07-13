@@ -10,3 +10,21 @@ export function toLocalDateKey(d: Date): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+// "Today" / "Tomorrow" for the two closest days, then a short weekday+date
+// label — used by the admin all-students agenda to group entries by date
+// without repeating the full date string for every nearby entry.
+export function formatAgendaDateLabel(dateKey: string, todayKey: string): string {
+  if (dateKey === todayKey) return "Today";
+
+  const [ty, tm, td] = todayKey.split("-").map(Number);
+  const tomorrow = new Date(ty, tm - 1, td + 1);
+  if (dateKey === toLocalDateKey(tomorrow)) return "Tomorrow";
+
+  const [y, m, day] = dateKey.split("-").map(Number);
+  return new Date(y, m - 1, day).toLocaleDateString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}

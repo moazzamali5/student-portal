@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, Button, Card } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Skeleton } from "@/components/ui";
+import { UserCheckIcon } from "@/components/icons";
 
 type Parent = {
   id: string;
@@ -12,7 +13,7 @@ type Parent = {
 };
 
 export default function AdminParentsPage() {
-  const [parents, setParents] = useState<Parent[]>([]);
+  const [parents, setParents] = useState<Parent[] | null>(null);
 
   async function load() {
     const res = await fetch("/api/admin/parents");
@@ -32,8 +33,22 @@ export default function AdminParentsPage() {
     load();
   }
 
-  const pending = parents.filter((p) => p.approvalStatus === "PENDING");
-  const decided = parents.filter((p) => p.approvalStatus !== "PENDING");
+  const pending = (parents ?? []).filter((p) => p.approvalStatus === "PENDING");
+  const decided = (parents ?? []).filter((p) => p.approvalStatus !== "PENDING");
+
+  if (parents === null) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl font-semibold text-slate-900">Parent requests</h1>
+        <Card>
+          <Skeleton className="h-24 w-full" />
+        </Card>
+        <Card>
+          <Skeleton className="h-24 w-full" />
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -42,7 +57,7 @@ export default function AdminParentsPage() {
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Pending approval</h2>
         {pending.length === 0 ? (
-          <p className="text-sm text-slate-500">No pending requests.</p>
+          <EmptyState icon={<UserCheckIcon />} title="No pending requests" />
         ) : (
           <div className="space-y-3">
             {pending.map((p) => (
@@ -73,7 +88,7 @@ export default function AdminParentsPage() {
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">All parents</h2>
         {decided.length === 0 ? (
-          <p className="text-sm text-slate-500">No decided requests yet.</p>
+          <EmptyState icon={<UserCheckIcon />} title="No decided requests yet" />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>

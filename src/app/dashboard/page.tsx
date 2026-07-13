@@ -2,9 +2,10 @@ import Link from "next/link";
 import { getServerUser } from "@/lib/session";
 import { adminDb } from "@/lib/firebase-admin";
 import { COLLECTIONS } from "@/lib/collections";
-import { Badge, Card, ProgressBar } from "@/components/ui";
-import { ClockIcon } from "@/components/icons";
+import { Badge, Card, EmptyState, ProgressBar } from "@/components/ui";
+import { ClockIcon, ClipboardIcon, BookIcon } from "@/components/icons";
 import { toLocalDateKey } from "@/lib/date-utils";
+import { TodayClassesCard } from "@/components/today-classes-card";
 import type { ClassSessionDoc, HomeworkDoc, HomeworkSubmissionDoc, ArticleDoc, ArticleReadDoc, WithId } from "@/lib/types";
 
 export default async function DashboardHome() {
@@ -109,29 +110,7 @@ export default async function DashboardHome() {
         </Card>
       </Link>
 
-      <Card>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">Today&apos;s classes</h2>
-          <Link href="/dashboard/timetable" className="text-sm text-indigo-600 hover:underline">
-            Full timetable →
-          </Link>
-        </div>
-        {todaysClasses.length === 0 ? (
-          <p className="text-sm text-slate-500">No classes scheduled today.</p>
-        ) : (
-          <div className="space-y-2">
-            {todaysClasses.map((c) => (
-              <div
-                key={c.id}
-                className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
-              >
-                <span className="font-medium">{c.startTime}-{c.endTime}</span>
-                <Badge tone={c.status === "taken" ? "success" : "default"}>{c.status}</Badge>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
+      <TodayClassesCard sessions={todaysClasses} />
 
       <Card>
         <div className="mb-3 flex items-center justify-between">
@@ -141,7 +120,7 @@ export default async function DashboardHome() {
           </Link>
         </div>
         {homeworkDueSoon.length === 0 ? (
-          <p className="text-sm text-slate-500">Nothing due this week.</p>
+          <EmptyState icon={<ClipboardIcon />} title="Nothing due this week" />
         ) : (
           <div className="space-y-2">
             {homeworkDueSoon.map((hw) => {
@@ -174,7 +153,7 @@ export default async function DashboardHome() {
           </Link>
         </div>
         {articles.length === 0 ? (
-          <p className="text-sm text-slate-500">No articles posted yet.</p>
+          <EmptyState icon={<BookIcon />} title="No articles posted yet" />
         ) : (
           <div className="space-y-2">
             {articles.map((a) => {

@@ -234,12 +234,12 @@ export default function PlannerPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-900">Schedule</h2>
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={generate} disabled={generating}>
-              {generating ? "Generating..." : "Generate schedule"}
+            <Button variant="secondary" loading={generating} onClick={generate}>
+              Generate schedule
             </Button>
             {proposed.length > 0 && (
-              <Button onClick={accept} disabled={accepting}>
-                {accepting ? "Accepting..." : "Accept schedule"}
+              <Button loading={accepting} onClick={accept}>
+                Accept schedule
               </Button>
             )}
           </div>

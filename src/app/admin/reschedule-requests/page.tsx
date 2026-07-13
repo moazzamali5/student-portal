@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, Button, Card, ErrorText } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, ErrorText, Skeleton } from "@/components/ui";
+import { ClipboardIcon } from "@/components/icons";
 
 type RescheduleRequest = {
   id: string;
@@ -16,7 +17,7 @@ type RescheduleRequest = {
 };
 
 export default function AdminRescheduleRequestsPage() {
-  const [requests, setRequests] = useState<RescheduleRequest[]>([]);
+  const [requests, setRequests] = useState<RescheduleRequest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
@@ -43,8 +44,22 @@ export default function AdminRescheduleRequestsPage() {
     load();
   }
 
-  const pending = requests.filter((r) => r.status === "PENDING");
-  const decided = requests.filter((r) => r.status !== "PENDING");
+  const pending = (requests ?? []).filter((r) => r.status === "PENDING");
+  const decided = (requests ?? []).filter((r) => r.status !== "PENDING");
+
+  if (requests === null) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl font-semibold text-slate-900">Reschedule requests</h1>
+        <Card>
+          <Skeleton className="h-20 w-full" />
+        </Card>
+        <Card>
+          <Skeleton className="h-20 w-full" />
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -54,7 +69,7 @@ export default function AdminRescheduleRequestsPage() {
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Pending</h2>
         {pending.length === 0 ? (
-          <p className="text-sm text-slate-500">No pending requests.</p>
+          <EmptyState icon={<ClipboardIcon />} title="No pending requests" />
         ) : (
           <div className="space-y-3">
             {pending.map((r) => (
@@ -84,7 +99,7 @@ export default function AdminRescheduleRequestsPage() {
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Decided</h2>
         {decided.length === 0 ? (
-          <p className="text-sm text-slate-500">Nothing decided yet.</p>
+          <EmptyState icon={<ClipboardIcon />} title="Nothing decided yet" />
         ) : (
           <div className="space-y-2">
             {decided.map((r) => (

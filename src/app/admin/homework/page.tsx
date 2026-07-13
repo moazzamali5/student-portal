@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Button, Card, ErrorText, Input, Label, Textarea } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorText, Input, Label, Skeleton, Textarea } from "@/components/ui";
+import { ClipboardIcon } from "@/components/icons";
 import { StudentPicker } from "@/components/student-picker";
 
 type Homework = {
@@ -19,7 +20,7 @@ type Homework = {
 const emptyForm = { title: "", description: "", subject: "", dueDate: "" };
 
 export default function AdminHomeworkPage() {
-  const [items, setItems] = useState<Homework[]>([]);
+  const [items, setItems] = useState<Homework[] | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [studentIds, setStudentIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -115,8 +116,8 @@ export default function AdminHomeworkPage() {
             <StudentPicker selected={studentIds} onChange={setStudentIds} />
           </div>
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={loading}>
-              {loading ? "Assigning..." : "Assign"}
+            <Button type="submit" loading={loading}>
+              Assign
             </Button>
             <ErrorText>{error}</ErrorText>
           </div>
@@ -124,35 +125,45 @@ export default function AdminHomeworkPage() {
       </Card>
 
       <div className="space-y-3">
-        {items.map((hw) => (
-          <Card key={hw.id} className="flex items-center justify-between">
-            <div>
-              <Link href={`/admin/homework/${hw.id}`} className="font-medium text-indigo-700 hover:underline">
-                {hw.title}
-              </Link>
-              <p className="text-sm text-slate-600">
-                {hw.subject ? `${hw.subject} · ` : ""}Due {new Date(hw.dueDate).toLocaleDateString()} ·{" "}
-                {hw.assignedStudentIds.length} assigned · {hw._count.submissions} submitted
-                {hw.instructionsFileUrl && (
-                  <>
-                    {" · "}
-                    <a
-                      href={`/api/homework/${hw.id}/instructions/download`}
-                      target="_blank"
-                      className="text-indigo-600 hover:underline"
-                    >
-                      View instructions
-                    </a>
-                  </>
-                )}
-              </p>
-            </div>
-            <button onClick={() => handleDelete(hw.id)} className="text-sm text-red-600 hover:underline">
-              Delete
-            </button>
+        {items === null ? (
+          <>
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </>
+        ) : items.length === 0 ? (
+          <Card>
+            <EmptyState icon={<ClipboardIcon />} title="No homework assigned yet" />
           </Card>
-        ))}
-        {items.length === 0 && <p className="text-sm text-slate-500">No homework assigned yet.</p>}
+        ) : (
+          items.map((hw) => (
+            <Card key={hw.id} className="flex items-center justify-between">
+              <div>
+                <Link href={`/admin/homework/${hw.id}`} className="font-medium text-indigo-700 hover:underline">
+                  {hw.title}
+                </Link>
+                <p className="text-sm text-slate-600">
+                  {hw.subject ? `${hw.subject} · ` : ""}Due {new Date(hw.dueDate).toLocaleDateString()} ·{" "}
+                  {hw.assignedStudentIds.length} assigned · {hw._count.submissions} submitted
+                  {hw.instructionsFileUrl && (
+                    <>
+                      {" · "}
+                      <a
+                        href={`/api/homework/${hw.id}/instructions/download`}
+                        target="_blank"
+                        className="text-indigo-600 hover:underline"
+                      >
+                        View instructions
+                      </a>
+                    </>
+                  )}
+                </p>
+              </div>
+              <button onClick={() => handleDelete(hw.id)} className="text-sm text-red-600 hover:underline">
+                Delete
+              </button>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

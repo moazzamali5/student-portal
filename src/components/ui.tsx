@@ -8,8 +8,8 @@ export function Card({
 }: React.HTMLAttributes<HTMLDivElement> & { hover?: boolean }) {
   return (
     <div
-      className={`rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all ${
-        hover ? "hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md" : ""
+      className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all ${
+        hover ? "hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg" : ""
       } ${className}`}
       {...props}
     />
@@ -19,8 +19,14 @@ export function Card({
 export function Button({
   className = "",
   variant = "primary",
+  loading = false,
+  disabled,
+  children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: "primary" | "secondary" | "danger";
+  loading?: boolean;
+}) {
   const styles = {
     primary: "bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-indigo-300",
     secondary: "bg-slate-100 text-slate-800 hover:bg-slate-200",
@@ -29,9 +35,13 @@ export function Button({
 
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed ${styles} ${className}`}
+      className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-[color,background-color,transform] active:scale-[0.97] disabled:cursor-not-allowed ${styles} ${className}`}
+      disabled={disabled || loading}
       {...props}
-    />
+    >
+      {loading && <Spinner size="sm" className="mr-2" />}
+      {children}
+    </button>
   );
 }
 
@@ -60,16 +70,26 @@ export function Label({ className = "", ...props }: LabelHTMLAttributes<HTMLLabe
 export function Badge({
   className = "",
   tone = "default",
+  children,
   ...props
-}: React.HTMLAttributes<HTMLSpanElement> & { tone?: "default" | "success" | "warning" | "danger" }) {
+}: React.HTMLAttributes<HTMLSpanElement> & { tone?: "default" | "success" | "warning" | "danger" | "live" }) {
   const tones = {
     default: "bg-slate-100 text-slate-700",
     success: "bg-emerald-100 text-emerald-700",
     warning: "bg-amber-100 text-amber-700",
     danger: "bg-red-100 text-red-700",
+    live: "bg-emerald-50 text-emerald-700",
   }[tone];
 
-  return <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${tones} ${className}`} {...props} />;
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tones} ${className}`}
+      {...props}
+    >
+      {tone === "live" && <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+      {children}
+    </span>
+  );
 }
 
 export function ErrorText({ children }: { children?: string | null }) {
@@ -134,7 +154,7 @@ export function StatCard({
 }) {
   const content = (
     <Card hover={!!href} className="flex items-center gap-4">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm">
         {icon}
       </div>
       <div>
@@ -157,6 +177,59 @@ export function ProgressBar({ value, tone = "indigo" }: { value: number; tone?: 
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
       <div className={`h-full rounded-full ${bar} transition-all`} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+export function Spinner({
+  size = "md",
+  className = "",
+}: {
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}) {
+  const sizes = { sm: "h-4 w-4", md: "h-6 w-6", lg: "h-10 w-10" }[size];
+  return (
+    <svg className={`animate-spin ${sizes} ${className}`} viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" />
+      <path
+        className="opacity-90"
+        d="M21 12a9 9 0 0 0-9-9"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-slate-200 ${className}`} />;
+}
+
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+  className = "",
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`flex flex-col items-center gap-3 py-8 text-center ${className}`}>
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm">
+        {icon}
+      </div>
+      <div>
+        <p className="font-medium text-slate-900">{title}</p>
+        {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+      </div>
+      {action}
     </div>
   );
 }

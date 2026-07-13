@@ -9,6 +9,7 @@ import { friendlyFirebaseError } from "@/lib/firebase-errors";
 import { establishSessionAndRoute } from "@/lib/auth-flow";
 import { StudentPicker } from "@/components/student-picker";
 import { Button, Card, Divider, ErrorText, GoogleButton, Input, Label } from "@/components/ui";
+import { StudyIllustration } from "@/components/illustrations";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -101,7 +102,16 @@ export default function SignupPage() {
 
   return (
     <main className="flex flex-1 items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-slate-50 px-4 py-8">
-      <Card className="w-full max-w-sm">
+      <div className="flex w-full max-w-4xl items-center gap-10">
+        <div className="hidden flex-1 flex-col items-center text-center lg:flex">
+          <StudyIllustration className="w-full max-w-xs" />
+          <h2 className="mt-4 text-lg font-semibold text-slate-900">English Class by Ali</h2>
+          <p className="mt-1 max-w-xs text-sm text-slate-600">
+            Your classes, homework, and progress — all in one place.
+          </p>
+        </div>
+
+      <Card className="w-full max-w-sm animate-fade-up">
         <h1 className="text-xl font-semibold text-slate-900">Create your account</h1>
 
         <div className="mt-4">
@@ -177,8 +187,8 @@ export default function SignupPage() {
             />
           </div>
           <ErrorText>{error}</ErrorText>
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Creating account..." : "Sign up"}
+          <Button type="submit" loading={loading} className="w-full">
+            Sign up
           </Button>
         </form>
         <p className="mt-4 text-center text-sm text-slate-600">
@@ -188,6 +198,7 @@ export default function SignupPage() {
           </Link>
         </p>
       </Card>
+      </div>
     </main>
   );
 }

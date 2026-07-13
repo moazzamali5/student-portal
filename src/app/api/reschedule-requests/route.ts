@@ -4,6 +4,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { COLLECTIONS } from "@/lib/collections";
 import { requireAdmin, requireUser } from "@/lib/api-auth";
 import { sendMail } from "@/lib/mailer";
+import { appUrl, emailButton, renderEmail } from "@/lib/email-template";
 import { hasScheduleClash } from "@/lib/schedule-clash";
 import type { ClassSessionDoc, RescheduleRequestDoc, WithId } from "@/lib/types";
 
@@ -69,7 +70,19 @@ export async function POST(request: Request) {
   await sendMail(
     process.env.SUPER_ADMIN_EMAIL ?? "",
     `Reschedule request from ${studentName}`,
-    `<p>${studentName} requested to move their class from ${new Date(original.date).toDateString()} ${original.startTime}-${original.endTime} to ${new Date(parsed.data.newDate).toDateString()} ${parsed.data.newStartTime}-${parsed.data.newEndTime}.</p><p>Review it in the admin panel under Reschedule requests.</p>`,
+    renderEmail({
+      heading: "New reschedule request",
+      preheader: `${studentName} requested to move a class.`,
+      bodyHtml: `
+        <p><strong>${studentName}</strong> requested to move their class:</p>
+        <p style="color:#334155;">
+          ${new Date(original.date).toDateString()} ${original.startTime}-${original.endTime}
+          &rarr;
+          ${new Date(parsed.data.newDate).toDateString()} ${parsed.data.newStartTime}-${parsed.data.newEndTime}
+        </p>
+        ${emailButton("Review request", appUrl("/admin/reschedule-requests"))}
+      `,
+    }),
   ).catch(() => {});
 
   return NextResponse.json({ id: ref.id, ...requestData }, { status: 201 });

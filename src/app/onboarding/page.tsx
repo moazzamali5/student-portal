@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { clientAuth } from "@/lib/firebase-client";
 import { establishSessionAndRoute } from "@/lib/auth-flow";
 import { StudentPicker } from "@/components/student-picker";
-import { Button, Card, ErrorText, Input, Label } from "@/components/ui";
+import { Button, Card, ErrorText, Input, Label, Skeleton } from "@/components/ui";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -67,7 +67,13 @@ export default function OnboardingPage() {
     }
   }
 
-  if (!ready) return <p className="p-8 text-sm text-slate-500">Loading...</p>;
+  if (!ready) {
+    return (
+      <main className="flex flex-1 items-center justify-center px-4 py-8">
+        <Skeleton className="h-64 w-full max-w-sm" />
+      </main>
+    );
+  }
 
   return (
     <main className="flex flex-1 items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-slate-50 px-4 py-8">
@@ -117,8 +123,8 @@ export default function OnboardingPage() {
           )}
 
           <ErrorText>{error}</ErrorText>
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Saving..." : "Continue"}
+          <Button type="submit" loading={loading} className="w-full">
+            Continue
           </Button>
         </form>
       </Card>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api-auth";
 import { sendMail } from "@/lib/mailer";
+import { renderEmail } from "@/lib/email-template";
 
 export async function POST() {
   const { session, error } = await requireAdmin();
@@ -9,8 +10,14 @@ export async function POST() {
   const result = await sendMail(
     session!.user.email!,
     "Student Portal — test email",
-    `<p>This is a test email from the Student Portal, sent at ${new Date().toLocaleString()}.</p>
-     <p>If you received this, your SMTP configuration is working correctly.</p>`,
+    renderEmail({
+      heading: "Test email",
+      preheader: "Your SMTP configuration is working correctly.",
+      bodyHtml: `
+        <p>This is a test email from the Student Portal, sent at ${new Date().toLocaleString()}.</p>
+        <p>If you received this, your SMTP configuration is working correctly.</p>
+      `,
+    }),
   );
 
   if (!result.sent) {

@@ -2,6 +2,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { COLLECTIONS } from "@/lib/collections";
 import { sendMail } from "@/lib/mailer";
 import { toLocalDateKey } from "@/lib/date-utils";
+import { appUrl, emailButton, emailList, renderEmail } from "@/lib/email-template";
 import type { ClassSessionDoc, HomeworkDoc, ScheduledTaskDoc, WithId } from "@/lib/types";
 
 type EmailType = "CLASS_REMINDER" | "WEEKLY_SUMMARY" | "TASK_REMINDER" | "PARENT_WEEKLY_DIGEST";
@@ -29,17 +30,17 @@ async function markSent(type: EmailType, userId: string, referenceKey: string) {
 }
 
 function timetableHtmlFor(sessions: WithId<ClassSessionDoc>[]) {
-  return sessions.length
-    ? `<ul>${sessions
-        .map((s) => `<li>${new Date(s.date).toDateString()}: ${s.startTime}-${s.endTime}</li>`)
-        .join("")}</ul>`
-    : "<p>No classes scheduled this week.</p>";
+  return emailList(
+    sessions.map((s) => `${new Date(s.date).toDateString()}: ${s.startTime}-${s.endTime}`),
+    "No classes scheduled this week.",
+  );
 }
 
 function homeworkHtmlFor(homework: WithId<HomeworkDoc>[]) {
-  return homework.length
-    ? `<ul>${homework.map((h) => `<li>${h.title} — due ${new Date(h.dueDate).toDateString()}</li>`).join("")}</ul>`
-    : "<p>No homework due this week.</p>";
+  return emailList(
+    homework.map((h) => `${h.title} — due ${new Date(h.dueDate).toDateString()}`),
+    "No homework due this week.",
+  );
 }
 
 // Intended to run every 5 minutes; catches classes starting 25-35 minutes
@@ -77,9 +78,18 @@ export async function sendClassReminders() {
     await sendMail(
       student.email,
       "Reminder: your class starts in 30 minutes",
-      `<p>Hi ${student.name},</p><p>Your class starts at ${classSession.startTime} today.${
-        classSession.classLink ? ` <a href="${classSession.classLink}">Join here</a>.` : ""
-      }</p>`,
+      renderEmail({
+        heading: "Your class starts soon",
+        preheader: `Your class starts at ${classSession.startTime} today.`,
+        bodyHtml: `
+          <p>Hi ${student.name},</p>
+          <p>Your class starts at <strong>${classSession.startTime}</strong> today.</p>
+          ${classSession.classLink ? emailButton("Join class", classSession.classLink) : ""}
+          <p style="margin-top:18px;font-size:13px;">
+            <a href="${appUrl("/dashboard/timetable")}" style="color:#4f46e5;">View your full timetable in the portal →</a>
+          </p>
+        `,
+      }),
     );
 
     await markSent("CLASS_REMINDER", classSession.studentId, classSession.id);
@@ -122,7 +132,17 @@ export async function sendWeeklyDigest() {
     await sendMail(
       student.email,
       "Your week ahead",
-      `<p>Hi ${student.name}, here's your schedule for the week:</p>${timetableHtmlFor(mySessions)}<p><strong>Homework due this week:</strong></p>${homeworkHtmlFor(myHomework)}`,
+      renderEmail({
+        heading: "Your week ahead",
+        preheader: "Here's your schedule and homework for the week.",
+        bodyHtml: `
+          <p>Hi ${student.name}, here's your schedule for the week:</p>
+          ${timetableHtmlFor(mySessions)}
+          <p style="margin-top:16px;"><strong>Homework due this week:</strong></p>
+          ${homeworkHtmlFor(myHomework)}
+          ${emailButton("View in portal", appUrl("/dashboard/timetable"))}
+        `,
+      }),
     );
 
     await markSent("WEEKLY_SUMMARY", doc.id, weekKey);
@@ -171,11 +191,23 @@ export async function sendParentWeeklyDigest() {
         .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
       const childHomework = homework.filter((h) => (h.assignedStudentIds ?? []).includes(childDoc.id));
 
-      bodyHtml += `<h3>${childName}</h3>${timetableHtmlFor(childSessions)}${homeworkHtmlFor(childHomework)}`;
+      bodyHtml += `<h3 style="margin:18px 0 4px;font-size:15px;color:#0f172a;">${childName}</h3>${timetableHtmlFor(childSessions)}${homeworkHtmlFor(childHomework)}`;
     }
     if (!bodyHtml) continue;
 
-    await sendMail(parent.email, "Your child's week ahead", `<p>Hi ${parent.name}, here's the week ahead:</p>${bodyHtml}`);
+    await sendMail(
+      parent.email,
+      "Your child's week ahead",
+      renderEmail({
+        heading: "Your child's week ahead",
+        preheader: "This week's schedule and homework for your children.",
+        bodyHtml: `
+          <p>Hi ${parent.name}, here's the week ahead:</p>
+          ${bodyHtml}
+          ${emailButton("View in portal", appUrl("/parent/timetable"))}
+        `,
+      }),
+    );
 
     await markSent("PARENT_WEEKLY_DIGEST", doc.id, weekKey);
   }
@@ -221,7 +253,15 @@ export async function sendTaskReminders() {
     await sendMail(
       student.email,
       `Reminder: ${title} starts in 30 minutes`,
-      `<p>Hi ${student.name},</p><p><strong>${title}</strong> is scheduled from ${s.startTime} to ${s.endTime} today.</p>`,
+      renderEmail({
+        heading: "Your task starts soon",
+        preheader: `${title} is scheduled from ${s.startTime} to ${s.endTime} today.`,
+        bodyHtml: `
+          <p>Hi ${student.name},</p>
+          <p><strong>${title}</strong> is scheduled from <strong>${s.startTime}</strong> to <strong>${s.endTime}</strong> today.</p>
+          ${emailButton("View planner", appUrl("/dashboard/planner"))}
+        `,
+      }),
     );
 
     await markSent("TASK_REMINDER", s.studentId, s.id);

@@ -86,12 +86,12 @@ export default function AdminParentsPage() {
             <tbody>
               {decided.map((p) => (
                 <tr key={p.id} className="border-b border-slate-100 last:border-0">
-                  <td className="py-2">
+                  <td className="py-2 text-slate-900">
                     {p.name}
                     <br />
                     <span className="text-xs text-slate-500">{p.email}</span>
                   </td>
-                  <td className="py-2">{p.children.map((c) => c.name).join(", ") || "—"}</td>
+                  <td className="py-2 text-slate-900">{p.children.map((c) => c.name).join(", ") || "—"}</td>
                   <td className="py-2">
                     <Badge tone={p.approvalStatus === "APPROVED" ? "success" : "danger"}>{p.approvalStatus}</Badge>
                   </td>

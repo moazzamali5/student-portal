@@ -92,7 +92,7 @@ export default function AdminRescheduleRequestsPage() {
                 key={r.id}
                 className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm"
               >
-                <span>
+                <span className="text-slate-900">
                   {r.studentName}: {new Date(r.originalDate).toDateString()} {r.originalStartTime}-
                   {r.originalEndTime} → {new Date(r.newDate).toDateString()} {r.newStartTime}-{r.newEndTime}
                 </span>

@@ -52,7 +52,7 @@ export default function AdminHomeworkDetailPage({ params }: { params: Promise<{ 
           <tbody>
             {rows.map((r) => (
               <tr key={r.studentId} className="border-b border-slate-100 last:border-0">
-                <td className="py-2">
+                <td className="py-2 text-slate-900">
                   {r.studentName}
                   <br />
                   <span className="text-xs text-slate-500">{r.studentEmail}</span>
@@ -64,10 +64,10 @@ export default function AdminHomeworkDetailPage({ params }: { params: Promise<{ 
                     <Badge tone="warning">Pending</Badge>
                   )}
                 </td>
-                <td className="py-2">
+                <td className="py-2 text-slate-900">
                   {r.submission ? new Date(r.submission.submittedAt).toLocaleString() : "—"}
                 </td>
-                <td className="py-2">
+                <td className="py-2 text-slate-900">
                   {r.submission ? (
                     <a
                       href={`/api/homework/submissions/${r.submission.id}/download`}

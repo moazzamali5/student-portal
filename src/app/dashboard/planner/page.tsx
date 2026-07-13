@@ -164,7 +164,7 @@ export default function PlannerPage() {
           <div className="mt-3 space-y-1.5">
             {availability.map((a) => (
               <div key={a.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5 text-sm">
-                <span>
+                <span className="text-slate-900">
                   {DAYS_SHORT[a.dayOfWeek]} {a.startTime}-{a.endTime}
                 </span>
                 <button onClick={() => deleteAvailability(a.id)} className="text-xs text-red-600 hover:underline">
@@ -212,7 +212,7 @@ export default function PlannerPage() {
           <div className="mt-3 space-y-1.5">
             {tasks.map((t) => (
               <div key={t.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5 text-sm">
-                <span>
+                <span className="text-slate-900">
                   {t.title} <span className="text-slate-500">({t.durationMinutes}m)</span>
                 </span>
                 <div className="flex items-center gap-2">

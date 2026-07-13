@@ -56,16 +56,16 @@ export default function AdminStudentsPage() {
           <tbody>
             {students.map((s) => (
               <tr key={s.id} className="border-b border-slate-100 last:border-0">
-                <td className="py-2">
+                <td className="py-2 text-slate-900">
                   {s.name}
                   <br />
                   <span className="text-xs text-slate-500">{s.email}</span>
                 </td>
-                <td className="py-2">
+                <td className="py-2 text-slate-900">
                   {s.rollNumber ?? "—"} {s.className ? `/ ${s.className}` : ""}
                 </td>
-                <td className="py-2">{s.submissionCount}</td>
-                <td className="py-2">{s.articleReadCount}</td>
+                <td className="py-2 text-slate-900">{s.submissionCount}</td>
+                <td className="py-2 text-slate-900">{s.articleReadCount}</td>
               </tr>
             ))}
           </tbody>

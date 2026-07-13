@@ -241,7 +241,7 @@ export default function AdminTimetablePage() {
                   key={s.id}
                   className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
                 >
-                  <span>
+                  <span className="text-slate-900">
                     {new Date(s.date).toDateString()} · {s.startTime}-{s.endTime}
                   </span>
                   <div className="flex items-center gap-3">

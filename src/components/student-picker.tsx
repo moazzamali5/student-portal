@@ -42,7 +42,7 @@ export function StudentPicker({
             onChange={() => toggle(s.id)}
             className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
           />
-          <span>
+          <span className="text-slate-900">
             {s.name}
             {(s.rollNumber || s.className) && (
               <span className="text-slate-500">

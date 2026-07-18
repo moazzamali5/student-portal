@@ -42,3 +42,22 @@ export function formatTime12h(time: string): string {
 export function formatTimeRange12h(start: string, end: string): string {
   return `${formatTime12h(start)} - ${formatTime12h(end)}`;
 }
+
+export function durationHours(start: string, end: string): number {
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  return Math.max(0, (eh * 60 + em - (sh * 60 + sm)) / 60);
+}
+
+// Monday-Sunday week containing the given date — used for the admin's
+// weekly-hours report so picking any day of the week produces the same
+// report.
+export function getWeekRange(dateKey: string): { startKey: string; endKey: string } {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  const day = date.getDay(); // 0 = Sunday
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(y, m - 1, d + diffToMonday);
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+  return { startKey: toLocalDateKey(monday), endKey: toLocalDateKey(sunday) };
+}

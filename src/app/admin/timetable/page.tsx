@@ -48,6 +48,11 @@ function TabButton({
   );
 }
 
+function todayDateKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export default function AdminTimetablePage() {
   const toast = useToast();
   const [tab, setTab] = useState<"agenda" | "manage">("agenda");
@@ -62,6 +67,30 @@ export default function AdminTimetablePage() {
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [reportDate, setReportDate] = useState(todayDateKey);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+
+  async function downloadWeeklyReport() {
+    setDownloadingReport(true);
+    try {
+      const res = await fetch(`/api/admin/reports/weekly-hours?date=${reportDate}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.show(data.error ?? "Failed to generate report.", "error");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `weekly-report-${reportDate}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingReport(false);
+    }
+  }
 
   useEffect(() => {
     fetch("/api/students-directory")
@@ -172,6 +201,24 @@ export default function AdminTimetablePage() {
           </TabButton>
         </div>
       </div>
+
+      <Card className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <Label>Weekly hours report</Label>
+          <p className="text-sm text-slate-500">Pick any day — we&apos;ll cover that whole Mon–Sun week.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            type="date"
+            className="w-auto"
+            value={reportDate}
+            onChange={(e) => setReportDate(e.target.value)}
+          />
+          <Button variant="secondary" loading={downloadingReport} onClick={downloadWeeklyReport}>
+            Download PDF
+          </Button>
+        </div>
+      </Card>
 
       {tab === "agenda" && <AdminAgendaView />}
 
